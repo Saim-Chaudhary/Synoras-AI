@@ -1,0 +1,40 @@
+# Secrets and local settings (never commit these)
+.env
+.env.*
+!.env.example
+
+# User-uploaded documents (keep the folder, ignore its contents)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node (pdf-service and any other folder; frontend has its own file too)
+node_modules/
+.next/
+npm-debug.log*
+
+# Docker local data
+docker/data/
+docker/volumes/
+
+# Original Word documents (kept locally; the Markdown specs in docs/spec/ are the working copy)
+*.docx
+
+# Logs and temp files
+*.log
+tmp/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

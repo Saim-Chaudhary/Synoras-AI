@@ -1,0 +1,107 @@
+# Flow
+
+How each feature works, in plain words. Each feature lists: what the user does, which files are involved (in order), and each file's job. Entries are short.
+
+**Rule:** update this file after every task. File names below are filled in when the feature is built. Until then they say "not built yet".
+
+---
+
+## Overview of the whole system
+
+Think of Synoras AI as a restaurant:
+
+- **The browser (Next.js)** is the dining room. The user sees screens and clicks buttons.
+- **The backend (FastAPI)** is the waiter and the kitchen manager. It checks who you are, takes your request, decides what to do, and brings back the answer.
+- **The database (PostgreSQL + pgvector)** is the pantry. It keeps users, chats, memories, documents, and the "meaning numbers" (embeddings) used to find similar text.
+- **The background worker (Celery + Redis)** is the night cleaning crew. It does slow jobs so the user does not wait: summarizing old chats into memories, lowering memory confidence every day, and reading uploaded documents.
+- **The AI models** are the chefs. A small local one (Ollama) cooks easy dishes. A smaller cloud model cooks medium ones. A stronger cloud model cooks hard ones. A router decides which chef gets which dish.
+- **The PDF service (Node.js)** is the printer. It turns report data into a PDF file.
+
+The big idea: the AI **remembers** you between chats, and it **never changes a memory without asking you**.
+
+How a memory lives:
+- It starts **Current** with confidence 100% (stored as 1.0).
+- Every day the worker lowers it: `confidence = exp(-DECAY_RATE × days since last confirmed)`.
+- If it is used in a reply while below 50%, it becomes **Needs Re-verification** and the user is asked to confirm or edit it.
+- If new information contradicts it, a **conflict** is saved as pending, the user chooses, and the old text goes to the version history (**Past**).
+- Deleting a memory removes it completely.
+
+Main database tables: `users`, `projects`, `project_notes`, `tasks`, `chats`, `messages`, `memories`, `memory_versions`, `memory_conflicts`, `message_memories`, `documents`, `document_chunks`, `subtasks`, `agent_steps`, `reports`, `system_log` (see SDD Section 5.2).
+
+Typical trip of one chat message:
+1. You type a message in the browser.
+2. The backend finds your memories that are about this message.
+3. It sends your message + those memories to an AI model and streams the answer back word by word.
+4. Later (after the chat ends or sits idle 30 minutes), the worker turns the chat into new memories, and asks you if any of them contradict old ones.
+
+---
+
+## Folder layout
+
+```
+Synoras_AI/
+  frontend/        the website the user sees (Next.js, TypeScript, Tailwind)
+    src/app/       pages and layouts (App Router): each folder here becomes a web address
+  backend/         the server brain (FastAPI, Python)
+    app/
+      api/         the URLs the website can call (one file per feature)
+      core/        settings, security helpers (password hashing, tokens)
+      db/          database connection and migrations
+      models/      database tables written as Python classes
+      schemas/     the shape of data going in and out of the API (Pydantic)
+      services/    the real work for each feature, called by api/
+      memory/      memory extraction, decay, conflict detection
+      rag/         document reading, chunking, embedding, search
+      routing/     complexity classifier and model router
+      agents/      planner, researcher, reviewer, response agent (LangGraph)
+      workers/     background jobs (Celery): summaries, daily decay, indexing
+    tests/         automatic tests
+    uploads/       uploaded documents (stored on local disk; the DB keeps only the path)
+  pdf-service/     small Node.js service that turns report data into PDF files
+    src/           its code
+  docker/          Docker files to run the database, Redis and the services
+  docs/            specs (spec/), decisions, flow, progress, spec-changes
+```
+
+Rule of thumb: `api/` receives a request, `services/` does the work, `models/` talks to the database, `schemas/` checks the data.
+
+## Foundation
+Not built yet (only the empty folders exist, plus the default Next.js starter page).
+
+## Login and registration
+Not built yet.
+
+## Chat
+Not built yet.
+
+## Memory
+Not built yet.
+
+## Documents and RAG
+Not built yet.
+
+## Projects and tasks
+Not built yet.
+
+## Memory conflict handling
+Not built yet.
+
+## Multi-agent with routing
+Not built yet.
+
+## PDF reports
+Not built yet.
+
+## Admin (last step)
+Not built yet.
+
+---
+
+### Entry template (copy for each feature)
+
+**Feature name**
+- **User does:** one or two sentences.
+- **Files, in order:**
+  1. `path/to/file` — its job in one line.
+  2. `path/to/next_file` — its job in one line.
+- **Result:** what the user sees or what is saved.
