@@ -1,7 +1,7 @@
 [project]
 name = "backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "Synoras AI backend (FastAPI)"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
@@ -26,6 +26,12 @@ dependencies = [
     "redis>=8.1.0",
     "sqlalchemy>=2.1.8",
 ]
+
+[tool.pytest.ini_options]
+# Lets tests write "from app.main import app" (backend/ is the import root).
+pythonpath = ["."]
+# Silences a pytest-asyncio warning; we will use async tests later.
+asyncio_default_fixture_loop_scope = "function"
 
 [dependency-groups]
 dev = [
