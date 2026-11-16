@@ -37,11 +37,50 @@ Most AI chat tools forget you the moment the conversation ends. **Synoras AI** i
 
 ## Status
 
-The project is in its early build phase. Nothing is ready to use yet. Check back soon.
+The project is in its early build phase and is not ready to use yet. The backend is being built first and tested through FastAPI's `/docs` page. The real user interface comes at the end.
+
+| Part | State |
+|---|---|
+| Backend skeleton (FastAPI, settings, health check, tests) | Done |
+| Model layer: complexity classifier, tier router, Ollama / Groq / OpenRouter client | Built, offline tests pass; real key test in progress |
+| Database (PostgreSQL + pgvector), Redis, background jobs | Waiting for Docker |
+| Login, chat, memory, documents, projects, multi-agent, PDF reports, admin | Not started |
+| Web interface (Next.js) | Planned for the end |
+
+Details and the build order are in [`docs/progress.md`](docs/progress.md).
+
+## How the model routing works
+
+Each message is rated **Low**, **Medium** or **High** by a small rule-based classifier, then sent to a model of the right size. When the rating is uncertain, the stronger model is used.
+
+| Rating | Model | Where it runs |
+|---|---|---|
+| Low | Ollama (local) | Your own machine |
+| Medium | Groq `gpt-oss-20b` | Cloud, free tier |
+| High | OpenRouter free model | Cloud, free tier |
+
+Every answer comes back with the time it took and an estimated cost.
+
+## Run the backend
+
+You need [uv](https://docs.astral.sh/uv/). From the `backend/` folder:
+
+```bash
+uv sync
+cp .env.example .env     # then add your own Groq and OpenRouter keys
+uv run pytest            # offline tests, no keys needed
+uv run fastapi dev app/main.py
+```
+
+Then open <http://127.0.0.1:8000/docs>. The `/dev` endpoints there are temporary test tools with no login: use them only on your own machine.
 
 ## Stack
 
-Next.js · React · TypeScript · Tailwind CSS · FastAPI · LangChain / LangGraph · PostgreSQL + pgvector · Redis · Celery · Ollama · Node.js · Docker
+Next.js · React · TypeScript · Tailwind CSS · FastAPI · LangChain / LangGraph · PostgreSQL + pgvector · Redis · Celery · Ollama · Groq · OpenRouter · Node.js · Docker
+
+## Project documents
+
+The requirements and design live in [`docs/spec/`](docs/spec/) (Scope, SRS, SDD). Working notes: [`decisions.md`](docs/decisions.md), [`flow.md`](docs/flow.md), [`progress.md`](docs/progress.md).
 
 ---
 
