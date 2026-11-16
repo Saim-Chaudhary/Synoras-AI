@@ -43,6 +43,56 @@ Status is one of: `Proposed` (waiting for your approval), `Approved`, `Resolved`
 - **Alternatives:** Let Claude generate the structure; one single folder with frontend and backend mixed; put the SDD parts in separate services.
 - **Reason:** Each folder matches a part of the SDD architecture, so the code is easy to find and explain. One backend (not many small services) keeps it simple for one person.
 
+### A6. Docker, PostgreSQL and Redis are blocked until you install Docker
+- **Status:** Approved (by you)
+- **Decision:** Docker is not installed yet. You will tell Claude when it is. Until then, all Docker, PostgreSQL and Redis work is marked **Blocked/Waiting** in `progress.md`. Claude may write database code (models, migrations), but must **not** try to run it against a database.
+- **Alternatives:** Install PostgreSQL and Redis directly on Windows; use SQLite for now.
+- **Reason:** The SDD needs PostgreSQL + pgvector, and SQLite would hide pgvector problems. Waiting for Docker is simpler. Code that has not been run is untested, so migrations written now must be checked once Docker is ready.
+
+### A7. Backend first; the real UI is built at the end
+- **Status:** Approved (by you)
+- **Decision:** The final UI is built at the end of the project. The mockups in the spec are only a reference for now. Build the backend first and test every feature through FastAPI's `/docs` page. Do **not** build real frontend screens until you say so.
+- **Alternatives:** Build each feature's screen together with its API (as the old build order did).
+- **Reason:** One person, one thing at a time. Swagger (`/docs`) is enough to prove each API works, and the API shape is stable before the screens depend on it.
+- **Effect:** The "Frontend skeleton (Next.js)" step is postponed. Chat streaming must be testable through `/docs` or a simple client.
+
+### A8. Python tooling: uv, with backend libraries already installed
+- **Status:** Approved (by you)
+- **Decision:** Python is managed with **uv**. The backend libraries are installed in `backend/` (`pyproject.toml` and `uv.lock`): FastAPI, SQLAlchemy, Alembic, psycopg, pgvector, Celery, Redis, LangChain, LangGraph, langchain-groq, langchain-openai, langchain-ollama, pypdf and others. Add a library with `uv add`, never with plain `pip`.
+- **Alternatives:** pip + requirements.txt; Poetry.
+- **Reason:** uv is fast and gives a lock file, so the project installs the same way every time.
+
+### A9. Cloud models are Groq and OpenRouter
+- **Status:** Approved (by you)
+- **Decision:** Cloud models come from **Groq** (`langchain-groq`) and **OpenRouter** (through `langchain-openai` with OpenRouter's base URL). The local model runs in Ollama (`langchain-ollama`). Which exact model is "smaller" and which is "stronger" is still open (Part C).
+- **Alternatives:** Use OpenAI or Anthropic directly.
+- **Reason:** Groq and OpenRouter offer free or cheap access, which suits a student project.
+
+### A10. Free models for all three tiers
+- **Status:** Approved (by you)
+- **Decision:** Every tier uses a free model. Local (Low): Ollama, model name set later in `.env`. Smaller cloud (Medium): Groq `openai/gpt-oss-20b`. Stronger cloud (High): OpenRouter `nvidia/nemotron-3-ultra-550b-a55b:free` (backup: `google/gemma-4-31b-it:free`). Model names live in `backend/.env` (`GROQ_MODEL`, `OPENROUTER_MODEL`, `OLLAMA_MODEL`), not in code.
+- **Alternatives:** Paid models (`deepseek/deepseek-v4-pro`, Claude); Groq `gpt-oss-120b` for High (bigger daily quota).
+- **Reason:** You asked for free tiers only. Free limits (from the docs, 2026-11-17): OpenRouter free models allow 20 requests/min and 50/day (1000/day only after buying $10 of credits); Groq's docs list 30 requests/min, 1000/day, 8K tokens/min for gpt-oss-20b, but I could not confirm it is on the Groq free plan: your key test will show. OpenRouter's data policy for free models is not checked yet: check it before real user memories go through it. Free models get removed, so a missing model gives a clear "model not found" message.
+- **Note:** LangChain's docs recommend the `langchain-openrouter` package for OpenRouter. We keep `langchain-openai` with OpenRouter's base URL (A9) because it works.
+
+### A11. The complexity classifier uses simple rules, not a model
+- **Status:** Approved (by you)
+- **Decision:** `rate(text)` adds up points for message length, "hard task" words (analyze, design, debug), "ordinary task" words (explain, write), code, arithmetic and several questions, then maps the score to Low / Medium / High. Mixed signals, a long message with no task words, or a crash all give High (BR-7, SRS 11.0.E2). Each rating has a `reason`.
+- **Alternatives:** Ask a small model to rate each message.
+- **Reason:** The SDD does not say how to classify. Rules are instant (PER-5: under 1 second), free, work offline, give the same answer every time, and can be explained line by line. The cost is lower accuracy, and its mistakes go to the stronger model, not the weaker one. It sits behind one function, so a model-based classifier can replace it later. Rules and points are in `backend/app/routing/classifier.py`.
+
+### A12. Estimated cost vs actual cost
+- **Status:** Approved (by you)
+- **Decision:** With free models the real cost is $0, but the log (FR-22) and the saving against "always the strongest model" (FR-23, PER-10) need an estimate. Each model has a reference price (its published paid price) in `app/routing/pricing.py`. Every reply carries `estimated_cost_usd` (tokens × reference price, SRS Assumption 2) and `actual_cost_usd` (0 on free plans). Unknown models give `None`, not a guess. Local tier is 0 and 0.
+- **Alternatives:** Report only $0.
+- **Reason:** A $0 cost for everything would make the routing saving impossible to measure. The saving is therefore an estimate (BR-24 already says to label it).
+
+### A13. Retry rule and temporary test endpoints
+- **Status:** Approved (by you)
+- **Decision:** (1) FR-21's "retry 2 times" applies to cloud calls that cannot connect or get a server error (5xx). A rate-limit error (429) is not retried, because waiting is the only fix and a retry would waste free quota. The LangChain clients are set to 0 retries and our own loop in `model_client.py` does the retrying. (2) `/dev/classify` and `/dev/route` are temporary test endpoints with no login. `/dev/route` with `force_tier` is the Groq/OpenRouter key check, so the separate `/dev/check-llm` from the earlier plan was dropped. They are for local testing on 127.0.0.1 only and must be removed or protected in the Login step. (3) Settings keys default to empty so the app and tests run without a `.env`; missing keys give a clear message when a model is called.
+- **Alternatives:** Let the clients retry by themselves (6 times by default, including rate limits); protect the endpoints now.
+- **Reason:** Matches FR-21 exactly, protects free quota, and keeps testing simple until login exists.
+
 ---
 
 ## Part B: Problems found in the documents
@@ -120,8 +170,9 @@ All of B1 to B9 are **Resolved**: you approved them and they are applied to the 
 ---
 
 ## Part C: Decisions to make later
-- Which cloud models to use for "smaller" and "stronger" (needs Context7 and a look at current prices).
-- Which local model to run in Ollama, and which embedding model to use.
+- ~~Which cloud models to use for "smaller" and "stronger"~~ decided in A10 (free models).
+- Which local model to run in Ollama (when you install it), and which embedding model to use.
+- Whether to keep a fallback when OpenRouter's free daily limit (50 requests) is reached, for example Groq `gpt-oss-120b`.
 - How to turn a conversation into memories (the prompt we give the model).
 - Admin features (FR-25, FR-26) are now the last step in the build order.
 - Optional later: password reset.

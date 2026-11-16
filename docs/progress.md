@@ -4,12 +4,19 @@ Build order. Update this file after every task. Legend: `[ ]` not started, `[~]`
 
 Spec status: problems B1 to B9 are resolved in `docs/spec/` (see `decisions.md` and `spec-changes.md`). Seven smaller open inconsistencies are waiting for your approval (bottom of `spec-changes.md`). Ask before building a part they touch.
 
+Rules now in force (see `decisions.md` A6 to A9):
+- **Backend first.** Test every feature through FastAPI's `/docs` page. No real frontend screens until you say so; the mockups are reference only.
+- **Docker is not installed.** Everything marked **BLOCKED** waits until you tell me Docker is ready. Database code (models, migrations) can be written but never run against a database.
+- Python uses **uv** (`backend/pyproject.toml`). Cloud models: Groq and OpenRouter.
+
 - [~] **1. Foundation**
   - [x] Project folders (frontend, backend, pdf service): checked on disk, created by hand by you
-  - [ ] Docker setup for PostgreSQL + pgvector and Redis
-  - [ ] Backend skeleton (FastAPI) and database connection
-  - [ ] Frontend skeleton (Next.js)
-  - [ ] First database tables and migrations
+  - [x] Backend libraries installed with uv (`backend/pyproject.toml`)
+  - [ ] **BLOCKED (Docker):** Docker setup for PostgreSQL + pgvector and Redis
+  - [x] Backend skeleton: FastAPI app, settings from `backend/.env`, `GET /health`, pytest (`backend/app/main.py`)
+  - [ ] **BLOCKED (PostgreSQL):** Database connection
+  - [ ] **POSTPONED (until you say so):** Frontend skeleton (Next.js)
+  - [ ] First database tables and migrations: models and migration files can be written now; **BLOCKED (PostgreSQL)** for running or testing them
 - [ ] **2. Login** (FR-1, FR-2)
   - [ ] Register
   - [ ] Log in and log out
@@ -36,9 +43,12 @@ Spec status: problems B1 to B9 are resolved in `docs/spec/` (see `decisions.md` 
   - [ ] Detect contradictions before saving
   - [ ] Conflict screen: keep old, use new, keep both (`memory_conflicts` table)
   - [ ] Pending conflicts asked again later; version timeline
-- [ ] **8. Multi-agent with routing** (FR-18 to FR-23)
-  - [ ] Complexity classifier (Low, Medium, High)
-  - [ ] Router and model fallbacks
+- [~] **8. Multi-agent with routing** (FR-18 to FR-23)
+  - Model layer built early because it needs no database (decisions A10 to A13). 54 offline tests pass. **Waiting for you:** test the real Groq and OpenRouter keys on `/docs` (`POST /dev/route`). Ollama is **BLOCKED** (not installed).
+  - [x] Complexity classifier (Low, Medium, High): rules, FR-20, PER-5
+  - [x] Three model tiers with time and estimated cost (`app/routing/model_client.py`): Ollama (not tested, not installed), Groq, OpenRouter, 2 retries (FR-21)
+  - [~] Router and model fallbacks: done = choose tier, local unavailable → smaller cloud. Not done = quality-check rerun on the stronger model
+  - [ ] **BLOCKED (PostgreSQL):** saving each routing decision to `subtasks` / `agent_steps` (FR-22)
   - [ ] Planner, researcher, reviewer, response agents (LangGraph)
   - [ ] Logging (`subtasks`, `agent_steps`) and the routing and cost log screen
 - [ ] **9. PDF reports** (FR-24)
@@ -48,6 +58,10 @@ Spec status: problems B1 to B9 are resolved in `docs/spec/` (see `decisions.md` 
   - [ ] Admin dashboard: list users, deactivate and reactivate (not your own account)
   - [ ] `system_log` for every admin action
   - [ ] Monitoring page: background job status and recent errors
+
+## Blocked / waiting
+- Docker (not installed yet): PostgreSQL + pgvector, Redis, running migrations, Celery worker and daily jobs, anything that needs a database to test.
+- The Next.js frontend and all real screens: postponed to the end, on your word.
 
 ## Optional, later
 - [ ] Password reset (needs an email service; not in version 1.0)

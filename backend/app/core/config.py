@@ -22,9 +22,12 @@ class Settings(BaseSettings):
     groq_api_key: SecretStr = SecretStr("")
     openrouter_api_key: SecretStr = SecretStr("")
 
-    # Model names used only by the key check. Set them in .env.
-    groq_test_model: str = ""
-    openrouter_test_model: str = ""
+    # Which model runs each tier (see decisions A10). Names live in .env so they can
+    # be changed without touching code: free models on OpenRouter come and go.
+    groq_model: str = ""  # smaller cloud tier (Medium)
+    openrouter_model: str = ""  # stronger cloud tier (High)
+    ollama_model: str = ""  # local tier (Low); empty until Ollama is installed
+    ollama_base_url: str = "http://localhost:11434"
 
     # Local defaults for the services Docker will run later.
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/synoras"

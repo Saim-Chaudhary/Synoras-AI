@@ -33,6 +33,9 @@ docker/volumes/
 *.log
 tmp/
 
+# Claude Code local files (settings, session data). CLAUDE.md is NOT ignored: it is a project file.
+.claude/
+
 # OS and editor files
 .DS_Store
 Thumbs.db

@@ -4,7 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Synoras AI is a final-year project (COMSATS Sahiwal). **No application code exists yet** — the repo holds only the specs in `docs/spec/` (`Scope.md`, `SRS.md`, `SDD.md`, converted from the original `.docx` files, which are kept in `docs/`). The Markdown specs are now the **source of truth**: the Word files are out of date, and every change made to the specs is listed in `docs/spec-changes.md`. If you change a spec, add it to that file too. There are no build, lint or test commands yet; add them here once the foundation is built.
+Synoras AI is a final-year project (COMSATS Sahiwal). The specs are in `docs/spec/` (`Scope.md`, `SRS.md`, `SDD.md`, converted from the original `.docx` files, which are kept in `docs/`). The Markdown specs are now the **source of truth**: the Word files are out of date, and every change made to the specs is listed in `docs/spec-changes.md`. If you change a spec, add it to that file too.
+
+Built so far (backend only, no database yet): FastAPI skeleton with `/health`, settings, and the model layer (complexity classifier, router, Ollama/Groq/OpenRouter client) with temporary `/dev` test endpoints. See `docs/progress.md`.
+
+Commands (run from `backend/`):
+- Start the server: `uv run fastapi dev app/main.py`, then open `http://127.0.0.1:8000/docs`.
+- Run the tests: `uv run pytest` (offline: fake models, no keys, no tokens used).
+- Settings come from `backend/.env` (copy `backend/.env.example`). Never commit `.env`.
+- There is no lint command yet.
 
 ## Working rules (set by the user)
 
@@ -14,6 +22,9 @@ Synoras AI is a final-year project (COMSATS Sahiwal). **No application code exis
 - Work in small steps, one feature at a time.
 - **After every task**, update `docs/decisions.md`, `docs/flow.md` and `docs/progress.md`.
 - Follow the SDD for tables, algorithms and screens. If you must deviate, record why in `docs/decisions.md`.
+- **Backend first.** The final UI is built at the end. Treat the mockups in the spec as reference only, test features through FastAPI's `/docs` page, and **do not build real frontend screens until the user says so**.
+- **Docker is not installed yet** (the user will say when it is). Until then, mark all Docker, PostgreSQL and Redis work as Blocked/Waiting in `docs/progress.md`. You may write database code (models, migrations) but **never try to run it against a database**.
+- **Python uses uv.** Run from `backend/`: `uv add <package>`, `uv run <command>`. Never use plain `pip`. Libraries are already installed (see `backend/pyproject.toml`). Cloud models are Groq (`langchain-groq`) and OpenRouter (through `langchain-openai`); the local model is Ollama (`langchain-ollama`).
 - **Use Context7** to check the current docs of any library before writing code with it, and use the latest stable versions (not the versions in the Scope document). If Context7 is not connected or not authenticated, tell the user instead of guessing from memory.
 
 ## What the system is
@@ -46,4 +57,4 @@ The specs use stable IDs (FR-1…FR-26, UC-1…UC-13, BR-1…BR-26, USE-n, PER-n
 
 Problems B1 to B9 (missing columns/tables, status names, decay formula, and others) are **resolved** in the specs; see `docs/decisions.md`. Seven smaller inconsistencies are still **open** at the bottom of `docs/spec-changes.md` (for example what "keep both" does to the old memory, a missing `reports.file_path`, and how a normal chat message is routed). **Do not apply a fix for these until the user approves it**, and ask before building anything that depends on one.
 
-Build order (see `docs/progress.md`): foundation, login, chat, memory, documents and RAG, projects and tasks, memory conflict handling, multi-agent with routing, PDF reports, admin (last). Password reset is an optional later feature (no email service in version 1.0).
+Build order (see `docs/progress.md`; backend first, UI at the end): foundation, login, chat, memory, documents and RAG, projects and tasks, memory conflict handling, multi-agent with routing, PDF reports, admin (last). Password reset is an optional later feature (no email service in version 1.0).

@@ -66,7 +66,15 @@ Synoras_AI/
 Rule of thumb: `api/` receives a request, `services/` does the work, `models/` talks to the database, `schemas/` checks the data.
 
 ## Foundation
-Not built yet (only the empty folders exist, plus the default Next.js starter page).
+Backend skeleton is built. For now we build the backend only and test it through FastAPI's `/docs` page. Docker, PostgreSQL and Redis are not available yet, so anything that needs them waits (see `progress.md`).
+
+**Start the server and see it work**
+- **User does:** runs `uv run fastapi dev app/main.py` in `backend/`, then opens `http://127.0.0.1:8000/docs`.
+- **Files, in order:**
+  1. `app/main.py`: creates the FastAPI app and plugs in the URL files.
+  2. `app/api/health.py`: `GET /health` answers `{"status": "ok"}` (no database).
+  3. `app/core/config.py`: reads `backend/.env` once (keys, model names, database and Redis URLs). Keys are hidden when printed.
+- **Result:** the Swagger page lists the endpoints; `.env.example` shows what to put in `.env`.
 
 ## Login and registration
 Not built yet.
@@ -87,7 +95,19 @@ Not built yet.
 Not built yet.
 
 ## Multi-agent with routing
-Not built yet.
+Only the model layer is built so far (no planner, reviewer or database logging yet).
+
+**Model layer: classify a message and run it on a tier** (FR-20, FR-21; SDD 6.2)
+- **User does:** for now, you send a message to `POST /dev/route` on the `/docs` page. (`POST /dev/classify` only rates it, for free.)
+- **Files, in order:**
+  1. `app/api/dev_routing.py`: receives the request, turns failures into readable errors (429, 502, 503). Temporary: no login.
+  2. `app/schemas/routing.py`: checks the input (no empty message) and shapes the answer.
+  3. `app/routing/router.py`: rates the message, picks the tier, falls back to the smaller cloud model if the local model is missing.
+  4. `app/routing/classifier.py`: adds up points (length, task words, code) and returns Low / Medium / High with a reason. Unsure or crashed means High.
+  5. `app/routing/types.py`: the names `Complexity` and `Tier`, the Low→local, Medium→small, High→strong map, and `ModelCallError`.
+  6. `app/routing/model_client.py`: builds the Ollama / Groq / OpenRouter client from `.env` settings, calls it, retries twice if the provider cannot be reached, returns text, seconds and tokens.
+  7. `app/routing/pricing.py`: turns tokens into estimated cost (published paid price) and actual cost (0 on free plans).
+- **Result:** you see the complexity and why, which tier and model answered, the answer, the time, the tokens, the estimated and actual cost, and whether a fallback happened.
 
 ## PDF reports
 Not built yet.
