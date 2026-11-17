@@ -43,7 +43,7 @@ The project is in its early build phase and is not ready to use yet. The backend
 |---|---|
 | Backend skeleton (FastAPI, settings, health check, tests) | Done |
 | Model layer: complexity classifier, tier router, Ollama / Groq / OpenRouter client | Built, offline tests pass; real key test in progress |
-| Database (PostgreSQL + pgvector), Redis, background jobs | Waiting for Docker |
+| Database (PostgreSQL + pgvector), Redis, background jobs | Docker is ready; setup is next |
 | Login, chat, memory, documents, projects, multi-agent, PDF reports, admin | Not started |
 | Web interface (Next.js) | Planned for the end |
 

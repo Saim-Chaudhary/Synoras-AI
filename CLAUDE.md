@@ -23,7 +23,7 @@ Commands (run from `backend/`):
 - **After every task**, update `docs/decisions.md`, `docs/flow.md` and `docs/progress.md`.
 - Follow the SDD for tables, algorithms and screens. If you must deviate, record why in `docs/decisions.md`.
 - **Backend first.** The final UI is built at the end. Treat the mockups in the spec as reference only, test features through FastAPI's `/docs` page, and **do not build real frontend screens until the user says so**.
-- **Docker is not installed yet** (the user will say when it is). Until then, mark all Docker, PostgreSQL and Redis work as Blocked/Waiting in `docs/progress.md`. You may write database code (models, migrations) but **never try to run it against a database**.
+- **Docker is installed and working** (Docker 29.9.3, Compose v5.7.0). Docker, PostgreSQL and Redis work is no longer blocked, and database code may be run once its plan is approved. Ollama (the local model) is still not installed, so the Low tier falls back to the smaller cloud model.
 - **Python uses uv.** Run from `backend/`: `uv add <package>`, `uv run <command>`. Never use plain `pip`. Libraries are already installed (see `backend/pyproject.toml`). Cloud models are Groq (`langchain-groq`) and OpenRouter (through `langchain-openai`); the local model is Ollama (`langchain-ollama`).
 - **Use Context7** to check the current docs of any library before writing code with it, and use the latest stable versions (not the versions in the Scope document). If Context7 is not connected or not authenticated, tell the user instead of guessing from memory.
 

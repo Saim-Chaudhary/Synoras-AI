@@ -43,9 +43,9 @@ Status is one of: `Proposed` (waiting for your approval), `Approved`, `Resolved`
 - **Alternatives:** Let Claude generate the structure; one single folder with frontend and backend mixed; put the SDD parts in separate services.
 - **Reason:** Each folder matches a part of the SDD architecture, so the code is easy to find and explain. One backend (not many small services) keeps it simple for one person.
 
-### A6. Docker, PostgreSQL and Redis are blocked until you install Docker
-- **Status:** Approved (by you)
-- **Decision:** Docker is not installed yet. You will tell Claude when it is. Until then, all Docker, PostgreSQL and Redis work is marked **Blocked/Waiting** in `progress.md`. Claude may write database code (models, migrations), but must **not** try to run it against a database.
+### A6. Docker, PostgreSQL and Redis were blocked until Docker was installed
+- **Status:** Resolved on 2026-11-17: you installed Docker Desktop (Docker 29.9.3, Compose v5.7.0; Claude checked both commands work). **Docker, PostgreSQL and Redis work is no longer blocked.** The rule "never run database code" no longer applies. The rule "show a plan and get approval before writing code" (A1) still does. The PostgreSQL + pgvector and Redis containers are not set up yet; that is the next Foundation step. Ollama is still not installed (separate from Docker).
+- **Original decision (kept for history):** Docker is not installed yet. You will tell Claude when it is. Until then, all Docker, PostgreSQL and Redis work is marked **Blocked/Waiting** in `progress.md`. Claude may write database code (models, migrations), but must **not** try to run it against a database.
 - **Alternatives:** Install PostgreSQL and Redis directly on Windows; use SQLite for now.
 - **Reason:** The SDD needs PostgreSQL + pgvector, and SQLite would hide pgvector problems. Waiting for Docker is simpler. Code that has not been run is untested, so migrations written now must be checked once Docker is ready.
 

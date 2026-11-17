@@ -66,7 +66,7 @@ Synoras_AI/
 Rule of thumb: `api/` receives a request, `services/` does the work, `models/` talks to the database, `schemas/` checks the data.
 
 ## Foundation
-Backend skeleton is built. For now we build the backend only and test it through FastAPI's `/docs` page. Docker, PostgreSQL and Redis are not available yet, so anything that needs them waits (see `progress.md`).
+Backend skeleton is built. For now we build the backend only and test it through FastAPI's `/docs` page. Docker is now installed, but the PostgreSQL and Redis containers are not set up yet, so anything that needs them still waits for that step (see `progress.md`).
 
 **Start the server and see it work**
 - **User does:** runs `uv run fastapi dev app/main.py` in `backend/`, then opens `http://127.0.0.1:8000/docs`.

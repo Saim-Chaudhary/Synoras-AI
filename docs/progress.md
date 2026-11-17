@@ -6,17 +6,18 @@ Spec status: problems B1 to B9 are resolved in `docs/spec/` (see `decisions.md` 
 
 Rules now in force (see `decisions.md` A6 to A9):
 - **Backend first.** Test every feature through FastAPI's `/docs` page. No real frontend screens until you say so; the mockups are reference only.
-- **Docker is not installed.** Everything marked **BLOCKED** waits until you tell me Docker is ready. Database code (models, migrations) can be written but never run against a database.
+- **Docker is installed and working** (Docker 29.9.3, Compose v5.7.0, checked 2026-11-17). Nothing is blocked by Docker any more. The PostgreSQL + pgvector and Redis containers are not set up yet: that is the next Foundation step. Database code may now be run, after the plan for it is approved.
 - Python uses **uv** (`backend/pyproject.toml`). Cloud models: Groq and OpenRouter.
 
 - [~] **1. Foundation**
   - [x] Project folders (frontend, backend, pdf service): checked on disk, created by hand by you
   - [x] Backend libraries installed with uv (`backend/pyproject.toml`)
-  - [ ] **BLOCKED (Docker):** Docker setup for PostgreSQL + pgvector and Redis
+  - [x] Docker Desktop installed and working (Docker 29.9.3, Compose v5.7.0)
+  - [ ] Docker Compose setup for PostgreSQL + pgvector and Redis (`docker/`): ready to plan, not started
   - [x] Backend skeleton: FastAPI app, settings from `backend/.env`, `GET /health`, pytest (`backend/app/main.py`)
-  - [ ] **BLOCKED (PostgreSQL):** Database connection
+  - [ ] Database connection: needs the PostgreSQL container first
   - [ ] **POSTPONED (until you say so):** Frontend skeleton (Next.js)
-  - [ ] First database tables and migrations: models and migration files can be written now; **BLOCKED (PostgreSQL)** for running or testing them
+  - [ ] First database tables and migrations: ready to plan after the PostgreSQL container works
 - [ ] **2. Login** (FR-1, FR-2)
   - [ ] Register
   - [ ] Log in and log out
@@ -44,11 +45,11 @@ Rules now in force (see `decisions.md` A6 to A9):
   - [ ] Conflict screen: keep old, use new, keep both (`memory_conflicts` table)
   - [ ] Pending conflicts asked again later; version timeline
 - [~] **8. Multi-agent with routing** (FR-18 to FR-23)
-  - Model layer built early because it needs no database (decisions A10 to A13). 54 offline tests pass. **Waiting for you:** test the real Groq and OpenRouter keys on `/docs` (`POST /dev/route`). Ollama is **BLOCKED** (not installed).
+  - Model layer built early because it needs no database (decisions A10 to A13). 54 offline tests pass. **Waiting for you:** test the real Groq and OpenRouter keys on `/docs` (`POST /dev/route`). Ollama is **still waiting**: it is not installed (this is separate from Docker).
   - [x] Complexity classifier (Low, Medium, High): rules, FR-20, PER-5
   - [x] Three model tiers with time and estimated cost (`app/routing/model_client.py`): Ollama (not tested, not installed), Groq, OpenRouter, 2 retries (FR-21)
   - [~] Router and model fallbacks: done = choose tier, local unavailable → smaller cloud. Not done = quality-check rerun on the stronger model
-  - [ ] **BLOCKED (PostgreSQL):** saving each routing decision to `subtasks` / `agent_steps` (FR-22)
+  - [ ] Saving each routing decision to `subtasks` / `agent_steps` (FR-22): needs those tables first
   - [ ] Planner, researcher, reviewer, response agents (LangGraph)
   - [ ] Logging (`subtasks`, `agent_steps`) and the routing and cost log screen
 - [ ] **9. PDF reports** (FR-24)
@@ -60,7 +61,9 @@ Rules now in force (see `decisions.md` A6 to A9):
   - [ ] Monitoring page: background job status and recent errors
 
 ## Blocked / waiting
-- Docker (not installed yet): PostgreSQL + pgvector, Redis, running migrations, Celery worker and daily jobs, anything that needs a database to test.
+- Docker: **no longer blocked** (installed and working since 2026-11-17).
+- Ollama (local model): not installed yet. Until then the Low tier falls back to the smaller cloud model.
+- Your real-key test of Groq and OpenRouter on `/docs` (`POST /dev/route`).
 - The Next.js frontend and all real screens: postponed to the end, on your word.
 
 ## Optional, later
