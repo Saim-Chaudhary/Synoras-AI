@@ -20,10 +20,14 @@ Rules now in force (see `decisions.md` A6 to A9):
   - [x] First table: `users` (all 9 columns of SDD 5.2), checked in PostgreSQL with `\d users`; downgrade and upgrade both work
   - [ ] **POSTPONED (until you say so):** Frontend skeleton (Next.js)
   - [ ] Redis connection from the app and Celery worker: Redis container runs, but no code uses it yet (comes with the first background job)
-- [ ] **2. Login** (FR-1, FR-2)
-  - [ ] Register
-  - [ ] Log in and log out
-  - [ ] 5 failed attempts locks the account for 15 minutes
+- [~] **2. Login** (FR-1, FR-2): built and tested (99 tests pass; also tried on a live server). Two small items wait for your decision.
+  - [x] Register (`POST /auth/register`): rejects a used email and a password under 8 characters; password stored as an argon2 hash
+  - [x] Log in (`POST /auth/login`, JWT access token) and `GET /auth/me`
+  - [x] 5 failed attempts in a row lock the account for 15 minutes; a successful login resets the counter; a deactivated account gets the same "Invalid login"
+  - [x] Reusable `get_current_user` and `require_admin` dependencies (`backend/app/api/deps.py`) for protecting later endpoints
+  - [ ] Log out: there is no server endpoint. The browser just throws the token away, and it expires after 60 minutes. Waiting for your decision (decisions A16)
+  - [ ] Protect or remove the temporary `/dev` endpoints: still open and unprotected. Waiting for your decision (decisions A13, A16)
+  - [ ] How the first administrator account is created: not built; it belongs to the Admin step (for now set `role` in the database by hand)
 - [ ] **3. Chat** (FR-3, FR-4)
   - [ ] Send a message and get a streamed reply
   - [ ] Conversation history: new, reopen, search, delete

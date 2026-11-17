@@ -109,6 +109,27 @@ Status is one of: `Proposed` (waiting for your approval), `Approved`, `Resolved`
 - **Alternatives:** Put Alembic inside `app/db/` (non-standard); create tables with `create_all()` (no history, cannot change later).
 - **Reason:** Migrations give a history of every change to the database, and one `alembic upgrade head` builds the whole database on a new PC.
 
+### A16. Registration and login
+- **Status:** Approved (you asked for this, following SRS FR-1, FR-2, UC-1 and SDD 6.1)
+- **Decision (what it does):**
+  - `POST /auth/register`, `POST /auth/login`, `GET /auth/me`. No new migration: every column needed (`failed_attempts`, `locked_until`, ...) already exists, and `alembic check` finds nothing to add.
+  - **Passwords:** argon2id through `pwdlib` (BR-9), at least 8 characters (BR-10), at most 128 (stops huge passwords from wasting server time). "Password is too short" is checked in our own code so the message is exactly the SDD's.
+  - **Emails** are saved and compared in lower case, so `Ali@Mail.com` and `ali@mail.com` are one account. A bad email format is rejected (UC-1 1.1.E2).
+  - **Login order follows SDD 6.1:** unknown email or deactivated account → "Invalid login" (same text and status as a wrong password); locked account → "Login is locked, try again later"; wrong password → count it. The 5th wrong password still answers "Invalid login" and starts the lock; the counter goes back to 0. Wrong passwords while locked are not counted. A good login sets the counter to 0 and clears `locked_until`.
+  - **Two protections beyond the SDD:** the user's row is locked (`FOR UPDATE`) while we count, so guesses sent at the same instant cannot dodge the counter; and for an unknown email we still do a dummy password check, so reply time does not reveal which emails exist.
+  - **Token:** JWT, HS256 only (decoding accepts nothing else, so "alg: none" forgeries fail). It carries user id (`sub`), role, issued-at and expiry; expiry is 60 minutes (`ACCESS_TOKEN_EXPIRE_MINUTES`). `JWT_SECRET` must be at least 32 characters; if it is not, login and register answer 503 with a clear message instead of issuing weak tokens. Claude generated a random secret into your `backend/.env` (git-ignored). Each computer should use its own.
+  - **Register returns the token too**, because SRS UC-1 says registering logs the user in.
+  - **`get_current_user`** reads the token, loads the user, and answers 401 for a missing, bad, expired or forged token, and also when the account no longer exists or is Deactivated (so deactivating an account stops its old tokens at once). **`require_admin`** adds a 403 for anyone whose role is not Administrator.
+  - **Status codes:** 201 registered; 409 email already used; 422 short password or bad input; 401 invalid login or no/bad token; 423 account locked; 403 not an administrator; 503 server missing `JWT_SECRET`.
+  - **On /docs** the login is JSON (`email`, `password`) and the Authorize button takes the pasted token (HTTP Bearer).
+  - **Tests** run on the real database inside a transaction that is rolled back, so no test rows are left.
+- **Left open (needs your decision):**
+  1. **Log out (FR-2):** there is no server endpoint. A JWT is stateless: the browser deletes it, and it dies after 60 minutes. A "revoked tokens" list in Redis could be added later if you want logout to cut a token off at once.
+  2. **The temporary `/dev/*` endpoints** (A13) are still open to anyone on 127.0.0.1. They can now be protected with `Depends(get_current_user)`, but that means you must log in before testing your Groq and OpenRouter keys. They are not changed yet.
+  3. **First administrator:** nothing creates one yet (the Admin step will). For tests and manual checks, change `role` to `Administrator` in the database.
+- **Alternatives:** OAuth2 form login (Swagger fills in the login box for you, but the field is called "username" and it duplicates the JSON login); sessions in Redis instead of JWT (logout works at once, but needs Redis on every request); returning only the user from register (a second call is needed to log in).
+- **Reason:** JWT needs no database or Redis lookup to check a token, and the rest follows the spec so you can explain it in the defense.
+
 ---
 
 ## Part B: Problems found in the documents

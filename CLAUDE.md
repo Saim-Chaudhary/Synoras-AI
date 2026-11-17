@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Synoras AI is a final-year project (COMSATS Sahiwal). The specs are in `docs/spec/` (`Scope.md`, `SRS.md`, `SDD.md`, converted from the original `.docx` files, which are kept in `docs/`). The Markdown specs are now the **source of truth**: the Word files are out of date, and every change made to the specs is listed in `docs/spec-changes.md`. If you change a spec, add it to that file too.
 
-Built so far (backend only): FastAPI skeleton with `/health` and `/health/db`, settings, the model layer (complexity classifier, router, Ollama/Groq/OpenRouter client) with temporary `/dev` test endpoints, and the database: PostgreSQL 18 + pgvector and Redis in Docker, SQLAlchemy connection, Alembic, and the `users` table. See `docs/progress.md`.
+Built so far (backend only): FastAPI skeleton with `/health` and `/health/db`, settings, the model layer (complexity classifier, router, Ollama/Groq/OpenRouter client) with temporary `/dev` test endpoints, the database: PostgreSQL 18 + pgvector and Redis in Docker, SQLAlchemy connection, Alembic, and the `users` table, and registration/login (`/auth/register`, `/auth/login`, `/auth/me`, JWT, lock after 5 failures). See `docs/progress.md`.
+
+Protecting an endpoint: add `user: User = Depends(get_current_user)` (or `Depends(require_admin)`) from `backend/app/api/deps.py`, and filter every query by `user.user_id`. `JWT_SECRET` in `backend/.env` must be at least 32 characters (command to make one is in `.env.example`). The temporary `/dev/*` endpoints are still unprotected (decisions A13, A16).
 
 Commands:
 - Start the database and Redis (project root): `docker compose -f docker/docker-compose.yml up -d`. Stop: `... down` (data is kept; **never add `-v`**, it deletes the data).

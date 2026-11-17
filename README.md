@@ -44,8 +44,9 @@ The project is in its early build phase and is not ready to use yet. The backend
 | Backend skeleton (FastAPI, settings, health check, tests) | Done |
 | Model layer: complexity classifier, tier router, Ollama / Groq / OpenRouter client | Built, offline tests pass; real key test in progress |
 | Database (PostgreSQL 18 + pgvector in Docker), migrations (Alembic), `users` table, Redis container | Done |
+| Register and login (argon2 passwords, JWT tokens, 15-minute lock after 5 wrong passwords) | Done |
 | Background jobs (Celery) | Not started |
-| Login, chat, memory, documents, projects, multi-agent, PDF reports, admin | Not started |
+| Chat, memory, documents, projects, multi-agent, PDF reports, admin | Not started |
 | Web interface (Next.js) | Planned for the end |
 
 Details and the build order are in [`docs/progress.md`](docs/progress.md).
@@ -91,7 +92,16 @@ Copy-Item backend/.env.example backend/.env
 cp backend/.env.example backend/.env
 ```
 
-Open `backend/.env` in a text editor and fill in `GROQ_API_KEY` and `OPENROUTER_API_KEY` (free keys from [console.groq.com](https://console.groq.com) and [openrouter.ai](https://openrouter.ai)). Leave the other lines as they are: they already match the Docker setup.
+Open `backend/.env` in a text editor and fill in:
+
+- `GROQ_API_KEY` and `OPENROUTER_API_KEY` (free keys from [console.groq.com](https://console.groq.com) and [openrouter.ai](https://openrouter.ai)).
+- `JWT_SECRET`: any random text of at least 32 characters. To make one, run this in the `backend/` folder (after step 5's `uv sync`) and paste the result:
+
+  ```bash
+  uv run python -c "import secrets; print(secrets.token_urlsafe(48))"
+  ```
+
+Leave the other lines as they are: they already match the Docker setup.
 
 ### 4. Start the database and Redis
 
@@ -120,6 +130,13 @@ uv run fastapi dev app/main.py
 ```
 
 Open <http://127.0.0.1:8000/docs>. Try `GET /health` and `GET /health/db` (it should say `"database": "reachable"`). The `/dev` endpoints there are temporary test tools with no login: use them only on your own machine.
+
+**Try the login on `/docs`:**
+
+1. `POST /auth/register`: click *Try it out*, change the example to a real name, email and a password of 8+ characters, then *Execute*. You get your user and an `access_token`.
+2. Copy the `access_token`, click the **Authorize** button (top right), paste it, and press *Authorize*.
+3. `GET /auth/me` now returns your account. Without a token it returns 401.
+4. `POST /auth/login` logs in again later. Five wrong passwords in a row lock the account for 15 minutes.
 
 ### Every day after that
 

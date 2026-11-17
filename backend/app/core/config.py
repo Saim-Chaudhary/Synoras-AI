@@ -35,8 +35,11 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://synoras:synoras_password@127.0.0.1:5433/synoras"
     redis_url: str = "redis://127.0.0.1:6379/0"
 
-    # Not enforced yet. The Login step will require a real secret.
+    # Login tokens (decisions A16). The secret signs every token, so it must be long and private.
+    # Empty by default so the app and tests start without a .env; login then answers 503
+    # with a clear message instead of issuing weak tokens.
     jwt_secret: SecretStr = SecretStr("")
+    access_token_expire_minutes: int = 60
 
 
 @lru_cache

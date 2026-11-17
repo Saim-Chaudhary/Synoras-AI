@@ -95,7 +95,32 @@ Backend skeleton is built. For now we build the backend only and test it through
 - **Result:** the Swagger page lists the endpoints; `.env.example` shows what to put in `.env`.
 
 ## Login and registration
-Not built yet.
+
+**Register**
+- **User does:** sends name, email and password to `POST /auth/register` (on `/docs`: open it, click Try it out).
+- **Files, in order:**
+  1. `app/api/auth.py`: receives the request, turns any `AuthError` into a status code (409, 422, 401, 423).
+  2. `app/schemas/auth.py`: checks the shape: name, a valid email, password not absurdly long.
+  3. `app/services/auth_service.py` (`register_user`): refuses a password under 8 characters or an email already used, saves the email in lower case and the password as a hash, saves the user.
+  4. `app/core/security.py`: `hash_password` (argon2id), and later `create_access_token`.
+  5. `app/models/user.py`: the `users` row. The database's UNIQUE rule on `email` is the last safety net.
+- **Result:** 201 with the new user and an access token (registering also logs you in).
+
+**Log in**
+- **User does:** sends email and password to `POST /auth/login`, copies the `access_token`.
+- **Files, in order:**
+  1. `app/api/auth.py`: receives it and checks that the server has a `JWT_SECRET`.
+  2. `app/services/auth_service.py` (`authenticate`): finds the user (row locked while we count). Unknown or deactivated → "Invalid login". Locked → "Login is locked". Wrong password → `failed_attempts` + 1, and at 5 a 15-minute `locked_until`. Right password → counter 0.
+  3. `app/core/security.py`: `verify_password`, `create_access_token` (signed JWT, 60 minutes).
+- **Result:** `{"access_token": "...", "token_type": "bearer"}`.
+
+**Use a protected endpoint**
+- **User does:** on `/docs` clicks Authorize, pastes the token, then calls `GET /auth/me`. (Outside `/docs`: header `Authorization: Bearer <token>`.)
+- **Files, in order:**
+  1. `app/api/deps.py` (`get_current_user`): reads the header, checks the token, loads the user, refuses unknown or deactivated accounts with 401. `require_admin` adds a 403 for non-administrators.
+  2. `app/core/security.py` (`decode_access_token`): checks signature and expiry.
+  3. The endpoint itself receives the `User`. **Any later endpoint is protected by adding `user: User = Depends(get_current_user)`** and must filter its data by `user.user_id` (privacy rules BR-1 and others).
+- **Result:** the user's details, or 401 / 403.
 
 ## Chat
 Not built yet.
