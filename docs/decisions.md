@@ -93,6 +93,22 @@ Status is one of: `Proposed` (waiting for your approval), `Approved`, `Resolved`
 - **Alternatives:** Let the clients retry by themselves (6 times by default, including rate limits); protect the endpoints now.
 - **Reason:** Matches FR-21 exactly, protects free quota, and keeps testing simple until login exists.
 
+### A14. Docker setup: images, ports and data
+- **Status:** Approved (you asked for this setup; the port change below was needed to make it work)
+- **Decision:** `docker/docker-compose.yml` runs two containers. **PostgreSQL 18.7 with pgvector 0.8.7** from the image `pgvector/pgvector:0.8.7-pg18` (the tag is pinned so everyone gets the same versions; it comes from the pgvector docs), and **Redis 8.10** from `redis:8-alpine`. Database `synoras`, user `synoras`, password `synoras_password` (local development only). Data lives in the Docker volumes `synoras_pgdata` and `synoras_redisdata`, so it survives restarts (checked with `down` and `up`). Redis also saves to disk (`appendonly`) so background jobs are not lost. Both ports are bound to `127.0.0.1`, so only your own PC can reach them. PostgreSQL 18 images keep data under `/var/lib/postgresql`, so the volume is mounted there.
+- **Port changed from the plan:** the database is on host port **5433**, not 5432. Your PC already runs a Windows PostgreSQL service (`postgresql-x64-18`) on 5432. If the container used 5432 it could not start, or the app would silently talk to the wrong database. That Windows service is untouched. `DATABASE_URL` in `.env`, `.env.example` and the default in `config.py` now use 5433.
+- **`127.0.0.1`, not `localhost`:** `localhost` tries IPv6 first, Docker only listens on IPv4, and the first migration run hung for minutes because of it. All addresses use `127.0.0.1`, and the connection has a 5-second timeout so a down database is reported quickly.
+- **Alternatives:** Stop the Windows PostgreSQL service to free port 5432 (changes your system); use the Windows PostgreSQL instead of Docker (needs pgvector installed by hand); `postgres:18` plus a manual pgvector install.
+- **Reason:** Containers give everyone the same database, and pgvector is already included in this image.
+
+### A15. Alembic, migrations and the `users` table
+- **Status:** Approved (you asked for this)
+- **Decision:** Alembic lives in `backend/alembic/` (its standard place, not inside `app/db/`). `env.py` takes the database address from `DATABASE_URL` in `.env` (so the app and Alembic always use the same database) and reads the tables from `app/db/base.py`. Two migrations: **0001** turns on pgvector (`CREATE EXTENSION vector`), **0002** creates `users` (made with `alembic revision --autogenerate`, then read and checked by hand). Constraint names follow one fixed pattern (`NAMING_CONVENTION` in `base.py`) so later migrations can rename or drop them.
+- **`users` table:** the 9 columns of SDD 5.2. Small additions, none of which change the meaning: `email` is **unique** (SDD 6.1 says "Email already used"); `role` is checked to be `User` or `Administrator` and `status` to be `Active` or `Deactivated`; `role`, `status`, `auto_memory` and `failed_attempts` have database defaults (`User`, `Active`, true, 0); `locked_until` is `TIMESTAMP WITH TIME ZONE` (the SDD only says TIMESTAMP) so comparing it with the current time can never go wrong because of time zones.
+- **Not decided yet:** whether an email is compared in lower case. The Login step should save emails in lower case.
+- **Alternatives:** Put Alembic inside `app/db/` (non-standard); create tables with `create_all()` (no history, cannot change later).
+- **Reason:** Migrations give a history of every change to the database, and one `alembic upgrade head` builds the whole database on a new PC.
+
 ---
 
 ## Part B: Problems found in the documents

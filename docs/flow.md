@@ -46,7 +46,7 @@ Synoras_AI/
     app/
       api/         the URLs the website can call (one file per feature)
       core/        settings, security helpers (password hashing, tokens)
-      db/          database connection and migrations
+      db/          database connection (session.py) and the Base class for tables (base.py)
       models/      database tables written as Python classes
       schemas/     the shape of data going in and out of the API (Pydantic)
       services/    the real work for each feature, called by api/
@@ -55,6 +55,7 @@ Synoras_AI/
       routing/     complexity classifier and model router
       agents/      planner, researcher, reviewer, response agent (LangGraph)
       workers/     background jobs (Celery): summaries, daily decay, indexing
+    alembic/       database migrations (one file per change to the tables); alembic.ini is its settings file
     tests/         automatic tests
     uploads/       uploaded documents (stored on local disk; the DB keeps only the path)
   pdf-service/     small Node.js service that turns report data into PDF files
@@ -66,7 +67,24 @@ Synoras_AI/
 Rule of thumb: `api/` receives a request, `services/` does the work, `models/` talks to the database, `schemas/` checks the data.
 
 ## Foundation
-Backend skeleton is built. For now we build the backend only and test it through FastAPI's `/docs` page. Docker is now installed, but the PostgreSQL and Redis containers are not set up yet, so anything that needs them still waits for that step (see `progress.md`).
+Backend skeleton is built. For now we build the backend only and test it through FastAPI's `/docs` page. PostgreSQL (with pgvector) and Redis now run in Docker containers.
+
+**Start the database and Redis**
+- **User does:** runs `docker compose -f docker/docker-compose.yml up -d` from the project root, then `uv run alembic upgrade head` in `backend/`.
+- **Files, in order:**
+  1. `docker/docker-compose.yml`: describes the two containers (PostgreSQL 18 + pgvector, Redis 8), their ports (database on 5433, Redis on 6379, both only on your PC) and the volumes that keep the data.
+  2. `backend/alembic/env.py`: reads `DATABASE_URL` from `.env` and the table list from `app/db/base.py`, then connects.
+  3. `backend/alembic/versions/0001_enable_pgvector_extension.py`: turns on pgvector.
+  4. `backend/alembic/versions/0002_create_users_table.py`: creates the `users` table.
+- **Result:** an empty but ready database with the `users` table. The data stays when containers stop.
+
+**Check that the app can reach the database**
+- **User does:** opens `GET /health/db` on the `/docs` page.
+- **Files, in order:**
+  1. `app/api/health.py`: receives the request, asks the database `SELECT 1` and which pgvector version is installed. If the database is down it answers 503 without showing the address or user name.
+  2. `app/db/session.py`: builds the connection from `DATABASE_URL` (5-second connect timeout) and hands one session to each request (`get_db`).
+  3. `app/models/user.py` (with `app/db/base.py`): the `users` table written as a Python class. Later tables follow the same pattern; each new model is also listed in `app/models/__init__.py`.
+- **Result:** `{"status": "ok", "database": "reachable", "pgvector": "0.8.7"}`, or a 503 error.
 
 **Start the server and see it work**
 - **User does:** runs `uv run fastapi dev app/main.py` in `backend/`, then opens `http://127.0.0.1:8000/docs`.

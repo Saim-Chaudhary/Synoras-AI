@@ -32,6 +32,9 @@ dependencies = [
 pythonpath = ["."]
 # Silences a pytest-asyncio warning; we will use async tests later.
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "integration: needs the Docker database running (skipped automatically when it is not)",
+]
 
 [dependency-groups]
 dev = [

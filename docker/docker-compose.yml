@@ -1,0 +1,48 @@
+# PostgreSQL (with pgvector) and Redis for local development.
+#
+# Start:   docker compose -f docker/docker-compose.yml up -d     (run from the project root)
+# Stop:    docker compose -f docker/docker-compose.yml down      (your data is kept)
+# DANGER:  adding -v to "down" also deletes the data volumes.
+#
+# The password below is for local development only. Both ports are bound to 127.0.0.1,
+# so nothing outside your own computer can reach them.
+
+name: synoras
+
+services:
+  db:
+    image: pgvector/pgvector:0.8.7-pg18 # PostgreSQL 18 + pgvector 0.8.7
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: synoras
+      POSTGRES_USER: synoras
+      POSTGRES_PASSWORD: synoras_password
+    ports:
+      # Host port 5433, not 5432: a PostgreSQL installed on Windows already uses 5432.
+      - "127.0.0.1:5433:5432"
+    volumes:
+      # PostgreSQL 18 images keep their data under /var/lib/postgresql (not .../data).
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U synoras -d synoras"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"] # also save to disk, so jobs survive a restart
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
+  redisdata:

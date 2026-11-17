@@ -6,12 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Synoras AI is a final-year project (COMSATS Sahiwal). The specs are in `docs/spec/` (`Scope.md`, `SRS.md`, `SDD.md`, converted from the original `.docx` files, which are kept in `docs/`). The Markdown specs are now the **source of truth**: the Word files are out of date, and every change made to the specs is listed in `docs/spec-changes.md`. If you change a spec, add it to that file too.
 
-Built so far (backend only, no database yet): FastAPI skeleton with `/health`, settings, and the model layer (complexity classifier, router, Ollama/Groq/OpenRouter client) with temporary `/dev` test endpoints. See `docs/progress.md`.
+Built so far (backend only): FastAPI skeleton with `/health` and `/health/db`, settings, the model layer (complexity classifier, router, Ollama/Groq/OpenRouter client) with temporary `/dev` test endpoints, and the database: PostgreSQL 18 + pgvector and Redis in Docker, SQLAlchemy connection, Alembic, and the `users` table. See `docs/progress.md`.
 
-Commands (run from `backend/`):
+Commands:
+- Start the database and Redis (project root): `docker compose -f docker/docker-compose.yml up -d`. Stop: `... down` (data is kept; **never add `-v`**, it deletes the data).
+- The database is on port **5433** (Windows already uses 5432) and addresses use `127.0.0.1`, not `localhost` (IPv6 problem). User, password and database name are all `synoras`-based: see `backend/.env.example`.
+- From `backend/`: `uv run alembic upgrade head` (apply migrations), `uv run alembic revision --autogenerate -m "message"` (new migration; always read the generated file), `uv run alembic downgrade -1` (undo one).
 - Start the server: `uv run fastapi dev app/main.py`, then open `http://127.0.0.1:8000/docs`.
-- Run the tests: `uv run pytest` (offline: fake models, no keys, no tokens used).
-- Settings come from `backend/.env` (copy `backend/.env.example`). Never commit `.env`.
+- Run the tests: `uv run pytest` (fake models, no keys, no tokens used; tests marked `integration` use the real database and skip themselves if the container is not running).
+- Settings come from `backend/.env` (copy `backend/.env.example`). Never commit `.env`. Do not save `.env` with a BOM (PowerShell's `Set-Content -Encoding utf8` adds one).
 - There is no lint command yet.
 
 ## Working rules (set by the user)
@@ -23,7 +26,7 @@ Commands (run from `backend/`):
 - **After every task**, update `docs/decisions.md`, `docs/flow.md` and `docs/progress.md`.
 - Follow the SDD for tables, algorithms and screens. If you must deviate, record why in `docs/decisions.md`.
 - **Backend first.** The final UI is built at the end. Treat the mockups in the spec as reference only, test features through FastAPI's `/docs` page, and **do not build real frontend screens until the user says so**.
-- **Docker is installed and working** (Docker 29.9.3, Compose v5.7.0). Docker, PostgreSQL and Redis work is no longer blocked, and database code may be run once its plan is approved. Ollama (the local model) is still not installed, so the Low tier falls back to the smaller cloud model.
+- **Docker is installed and working** (Docker 29.9.3, Compose v5.7.0). Docker, PostgreSQL and Redis work is no longer blocked, and database code may be run once its plan is approved. New tables go through a model in `backend/app/models/` plus an Alembic migration (never `create_all()`). Ollama (the local model) is still not installed, so the Low tier falls back to the smaller cloud model.
 - **Python uses uv.** Run from `backend/`: `uv add <package>`, `uv run <command>`. Never use plain `pip`. Libraries are already installed (see `backend/pyproject.toml`). Cloud models are Groq (`langchain-groq`) and OpenRouter (through `langchain-openai`); the local model is Ollama (`langchain-ollama`).
 - **Use Context7** to check the current docs of any library before writing code with it, and use the latest stable versions (not the versions in the Scope document). If Context7 is not connected or not authenticated, tell the user instead of guessing from memory.
 

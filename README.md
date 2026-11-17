@@ -43,7 +43,8 @@ The project is in its early build phase and is not ready to use yet. The backend
 |---|---|
 | Backend skeleton (FastAPI, settings, health check, tests) | Done |
 | Model layer: complexity classifier, tier router, Ollama / Groq / OpenRouter client | Built, offline tests pass; real key test in progress |
-| Database (PostgreSQL + pgvector), Redis, background jobs | Docker is ready; setup is next |
+| Database (PostgreSQL 18 + pgvector in Docker), migrations (Alembic), `users` table, Redis container | Done |
+| Background jobs (Celery) | Not started |
 | Login, chat, memory, documents, projects, multi-agent, PDF reports, admin | Not started |
 | Web interface (Next.js) | Planned for the end |
 
@@ -63,12 +64,19 @@ Every answer comes back with the time it took and an estimated cost.
 
 ## Run the backend
 
-You need [uv](https://docs.astral.sh/uv/). From the `backend/` folder:
+You need [uv](https://docs.astral.sh/uv/) and Docker. First start the database and Redis, from the project root:
+
+```bash
+docker compose -f docker/docker-compose.yml up -d
+```
+
+Then, from the `backend/` folder:
 
 ```bash
 uv sync
 cp .env.example .env     # then add your own Groq and OpenRouter keys
-uv run pytest            # offline tests, no keys needed
+uv run alembic upgrade head   # builds the database tables
+uv run pytest
 uv run fastapi dev app/main.py
 ```
 

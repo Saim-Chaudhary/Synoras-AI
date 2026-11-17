@@ -30,8 +30,10 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
 
     # Local defaults for the services Docker will run later.
-    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/synoras"
-    redis_url: str = "redis://localhost:6379/0"
+    # Docker maps the container's 5432 to port 5433 on your PC (a Windows PostgreSQL uses 5432).
+    # 127.0.0.1, not "localhost": "localhost" tries IPv6 first, and Docker only listens on IPv4.
+    database_url: str = "postgresql+psycopg://synoras:synoras_password@127.0.0.1:5433/synoras"
+    redis_url: str = "redis://127.0.0.1:6379/0"
 
     # Not enforced yet. The Login step will require a real secret.
     jwt_secret: SecretStr = SecretStr("")
