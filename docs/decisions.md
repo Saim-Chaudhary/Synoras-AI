@@ -153,6 +153,28 @@ Status is one of: `Proposed` (waiting for your approval), `Approved`, `Resolved`
 
 ---
 
+### A19. The Knowledge Base module uses GraphRAG instead of simple RAG
+- **Status:** The change itself is **Approved** (by you, 2026-11-18) and is written into the Scope, SRS and SDD (every edit is listed in `spec-changes.md`). The design details below are **my proposals**: they are written into the specs so you can read them, but they stay **Proposed** until you answer the open questions G1 to G14 (bottom of `spec-changes.md`). Nothing is built yet.
+- **Decision (what changed):**
+  1. **Chunks and embeddings stay as before** (pgvector). When that is done the document is `Indexed` and can already be searched by similarity. PER-7 (2 minutes) now covers only this part.
+  2. **A second background job extracts entities and relationships** from each chunk with the LangChain graph transformer and stores them in PostgreSQL. **No separate graph database** (CO-3).
+  3. **Extraction goes through the complexity classifier and router** (cheapest tier first). Every call is logged with model, time and estimated cost (BR-28, FR-22) in a new table `graph_extraction_log`.
+  4. **Questions are answered with GraphRAG**, run by **LangGraph** as a graph of five steps: embed the question, find the closest entities (vector search), expand through the relationships (2 steps), collect the supporting chunks, generate the answer with source references. For a document whose graph is not ready, similarity search over its chunks is used instead.
+  5. **Live graph panel:** the chat screen's right-hand panel gets two tabs, Memories and Knowledge graph. While an answer is written, the entities and relationships used are highlighted, driven by events sent over the same stream as the answer text.
+  6. **IDs:** new FR-27 (graph extraction), FR-28 (live graph panel), BR-27 (graph data is private), BR-28 (extraction calls are logged), PER-12, PER-13, USE-8, SI-9. Changed: FR-3, FR-15, FR-16, FR-17, FR-18, FR-22, FR-25 (BR-25 now also covers knowledge graphs), UC-7, UC-8, UC-9, UC-11, UC-13, PER-7, SI-1, SI-2, SI-3, SI-6, CO-2, CO-3, CI-4, UI-2, UI-4. Unchanged: FR-14, FR-19 to FR-21, FR-23 (open, see G4), FR-24, FR-26. Existing IDs were not renumbered.
+- **Proposed design (in the SDD):**
+  - **Tables:** `graph_entities` (entity_id, user_id, project_id, name, entity_type, description, embedding, created_at), `graph_relations` (relation_id, user_id, project_id, source_entity_id, target_entity_id, relation_type, description, created_at), the link tables `graph_entity_chunks` and `graph_relation_chunks` (back to `document_chunks`), and `graph_extraction_log`. New columns: `documents.graph_status` (Pending, Extracting, Ready, Failed) and `document_chunks.extracted_at` (empty until the chunk was processed: gives progress and lets the job continue after a stop).
+  - **Privacy:** every entity and relation carries its owner (`user_id`, and `project_id` for a project), so each knowledge base has its own graph and every query is scoped like the rest of the system (BR-18, BR-20, BR-27).
+  - **One entity per knowledge base:** same name (ignoring capitals) and same type is stored once and linked to every chunk that mentions it. Deleting a document removes its chunk links, and entities and relations that no other chunk supports are removed.
+  - **Events (SDD Table 4.2.1):** `retrieval_started`, `entities_found`, `graph_expanded`, `chunks_collected`, `model_selected`, `token`, `sources`, `done`, `error`. They come from LangGraph custom events, and one POST request returns one Server-Sent Events stream that carries both the events and the answer text.
+- **Libraries checked in Context7:** FastAPI (native `fastapi.sse.EventSourceResponse` and `ServerSentEvent`, and it works over POST), LangGraph (`StateGraph`, `get_stream_writer()`, `stream_mode="custom"` and `"updates"`), Cytoscape.js (adding and removing classes to highlight nodes and edges, adding elements, layouts) and react-force-graph (highlighting through callbacks). **Not found in Context7:** LangChain's graph transformer (`LLMGraphTransformer`). I checked PyPI instead: it is in `langchain-experimental` 0.4.2 (2026-05-22), which needs `langchain-core>=1.4` (installed: 1.8.1) and `langchain-community>=0.4.2` (a new dependency). Its exact API must be confirmed from the installed package before any code is written.
+- **Alternatives:** keep simple RAG; a graph database such as Neo4j (rejected: CO-3 says PostgreSQL is the only database); WebSocket (two-way, not needed); the browser's `EventSource` (cannot send the login header and only does GET); our own structured-output extraction instead of the transformer; react-force-graph for drawing.
+- **Reason:** GraphRAG can answer questions that need facts from several chunks or documents joined through the entities they share, and the live panel shows the user what the answer was built from, which fits the project's focus on transparency. Keeping the graph in PostgreSQL keeps one database and one set of backups, privacy rules and migrations.
+- **Open questions (nothing here is decided):** G1 PER-7 and extraction time; G2 free-tier limits; G3 rating extraction tasks and the undefined "quality check" (and an exception to BR-7); G4 where extraction is logged and FR-23; G5 embedding model and vector size; G6 new dependencies; G7 graph drawing library vs rule A17; G8 streaming format; G9 entity merging; G10 how far GraphRAG goes and its numbers; G11 re-index cost; G12 privacy of document text sent to cloud models; G13 sources are not stored; G14 bookkeeping and proposed numbers.
+- **Build plan:** four phases (see `progress.md`): chunks and embeddings, entity extraction, graph retrieval, live graph panel. The last two need the Chat step (streaming) first.
+
+---
+
 ## Part B: Problems found in the documents
 
 All of B1 to B9 are **Resolved**: you approved them and they are applied to the specs. The exact places are listed below. The full change list with one-line reasons is in `docs/spec-changes.md`.
@@ -229,11 +251,12 @@ All of B1 to B9 are **Resolved**: you approved them and they are applied to the 
 
 ## Part C: Decisions to make later
 - ~~Which cloud models to use for "smaller" and "stronger"~~ decided in A10 (free models).
-- Which local model to run in Ollama (when you install it), and which embedding model to use.
+- Which local model to run in Ollama (when you install it), and which embedding model and vector size to use (needed for chunks, memories and now graph entities: open question G5).
+- GraphRAG: the answers to the open questions G1 to G14 in `spec-changes.md` (A19), above all G5 (embedding model), G6 (extra Python packages), G7 (graph drawing library, an exception to A17) and G12 (privacy of document text sent to cloud models).
 - Whether to keep a fallback when OpenRouter's free daily limit (50 requests) is reached, for example Groq `gpt-oss-120b`.
 - How to turn a conversation into memories (the prompt we give the model).
 - Admin features (FR-25, FR-26) are now the last step in the build order.
 - Optional later: password reset.
 
 ## Part D: Open inconsistencies waiting for your approval
-Seven more small inconsistencies are listed at the bottom of `docs/spec-changes.md` ("Open inconsistencies"). **None of them is fixed.** Examples: what "keep both" does to the old memory, a missing `file_path` on `reports`, and whether normal chat messages go through the router.
+Seven more small inconsistencies are listed at the bottom of `docs/spec-changes.md` ("Open inconsistencies"), and fourteen open questions about GraphRAG (G1 to G14, decisions A19) follow them. **None of them is fixed.** Examples: what "keep both" does to the old memory, a missing `file_path` on `reports`, and whether normal chat messages go through the router.

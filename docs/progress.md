@@ -2,7 +2,7 @@
 
 Build order. Update this file after every task. Legend: `[ ]` not started, `[~]` in progress, `[x]` done.
 
-Spec status: problems B1 to B9 are resolved in `docs/spec/` (see `decisions.md` and `spec-changes.md`). Seven smaller open inconsistencies are waiting for your approval (bottom of `spec-changes.md`). Ask before building a part they touch.
+Spec status: problems B1 to B9 are resolved in `docs/spec/` (see `decisions.md` and `spec-changes.md`). Seven smaller open inconsistencies and fourteen GraphRAG open questions (G1 to G14, decisions A19) are waiting for your approval (bottom of `spec-changes.md`). Ask before building a part they touch. **On 2026-11-18 the Knowledge Base module changed from RAG to GraphRAG** (Scope, SRS and SDD updated; nothing built yet).
 
 Rules now in force (see `decisions.md` A6 to A9):
 - **A thin sample UI beside each backend feature** (decisions A17): simple, Tailwind only, no extra UI libraries, no animations, roughly following the mockups. The final design polish is done at the end. The backend is still tested through `/docs` and automatic tests.
@@ -39,11 +39,25 @@ Rules now in force (see `decisions.md` A6 to A9):
   - [ ] Retrieve the top 5 relevant memories for a reply (and record them in `message_memories`)
   - [ ] Memories page: view, edit, delete, confirm, version history, on/off switch
   - [ ] Confidence decay (daily job, `exp(-DECAY_RATE × days since last confirmed)`) and "needs re-verification"
-- [ ] **5. Documents and RAG** (FR-14 to FR-17)
-  - [ ] Upload with validation (PDF, TXT, MD, up to 20 MB)
-  - [ ] Background indexing (extract, chunk, embed, store)
-  - [ ] Document list: delete, re-index
-  - [ ] Ask questions with source references
+- [ ] **5. Documents and GraphRAG** (FR-14 to FR-17, FR-27, FR-28; decisions A19). Split into four phases. Each phase gets its own sample UI and tests. **Before phase 5.1 starts, answer the open questions G5 (embedding model), G6 (extra packages), G7 (graph library) and G12 (privacy) in `spec-changes.md`.** Phases 5.3 and 5.4 also need the Chat step (3) first, because they use its streaming.
+  - [ ] **Phase 5.1 Chunks and embeddings** (FR-14, FR-15, FR-16; PER-7)
+    - [ ] Upload with validation (PDF, TXT, MD, up to 20 MB), and the document list in the sample UI
+    - [ ] Background indexing (extract text, chunk, embed, store in `document_chunks`): status Processing, then Indexed or Failed
+    - [ ] Document list: delete, re-index
+    - [ ] Plain similarity search over chunks with source references (this is also the fallback while a graph is not ready)
+  - [ ] **Phase 5.2 Entity extraction** (FR-27; FR-22, BR-28)
+    - [ ] Tables and migration: `graph_entities`, `graph_relations`, `graph_entity_chunks`, `graph_relation_chunks`, `graph_extraction_log`, `documents.graph_status`, `document_chunks.extracted_at`
+    - [ ] Extraction with the LangChain graph transformer (add packages only after G6 is approved), through the classifier and router, 2 retries, quality check, one log row per call with model, time and cost
+    - [ ] Celery job `extractGraph`: resumable, pauses on a rate limit (G2), progress shown in the document list
+    - [ ] Merge entities with the same name and type in one knowledge base; remove graph entries that no chunk supports after a delete
+  - [ ] **Phase 5.3 Graph retrieval** (FR-17, BR-27, PER-12)
+    - [ ] LangGraph graph of steps: embed, entities found, graph expanded (2 steps), chunks collected, answer; fallback to similarity search
+    - [ ] Answer with source references; "the documents do not contain an answer" message; everything scoped to the user and project
+    - [ ] Streamed answer over Server-Sent Events with the events of SDD Table 4.2.1
+  - [ ] **Phase 5.4 Live graph panel** (FR-28, USE-8, PER-13)
+    - [ ] Endpoint that returns the graph for the panel (at most 150 entities by default)
+    - [ ] Chat side panel with the tabs Memories and Knowledge graph; graph drawn with Cytoscape.js if G7 is approved; highlight driven by the events (instant color change, no animation)
+    - [ ] Project knowledge base area: graph status on each document and a Show knowledge graph button
 - [ ] **6. Projects and tasks** (FR-11 to FR-13)
   - [ ] Create, open, rename, delete projects
   - [ ] Task board (To Do, In Progress, Done)
@@ -73,6 +87,7 @@ Rules now in force (see `decisions.md` A6 to A9):
 - Docker: **no longer blocked** (installed and working; database and Redis containers are running).
 - Ollama (local model): not installed yet. Until then the Low tier falls back to the smaller cloud model.
 - Your real-key test of Groq and OpenRouter on `/docs` (`POST /dev/route`).
+- Your answers to the GraphRAG open questions G1 to G14 (`spec-changes.md`), before phase 5.1 starts: at least G5, G6, G7 and G12.
 - Your decision on the `AGENTS.md` "feedback" block that `next dev` added (keep it, or remove `agentFeedback: true` from `frontend/next.config.ts`): see decisions A18.
 - Final design polish of all screens: at the end of the project (decisions A17).
 

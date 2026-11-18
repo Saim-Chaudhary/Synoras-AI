@@ -56,7 +56,7 @@ Version 1.0
 
 **Figure 8.1.1: Register / Log In Screen 26**
 
-**Figure 8.1.2: Chat Screen with Memory Panel 27**
+**Figure 8.1.2: Chat Screen with Memory Panel and Knowledge Graph Panel 27**
 
 **Figure 8.1.3: Memory Conflict Resolution Screen 28**
 
@@ -67,6 +67,8 @@ Version 1.0
 **Figure 8.1.6: Reports Screen (AI Transparency Report) 31**
 
 # List of Tables
+
+**Table 4.2.1: Events of the Answer Stream 10**
 
 **Table 5.2.1: Data Dictionary of Synoras AI 15**
 
@@ -113,7 +115,7 @@ The scope covered so far includes six modules:
 - **AI Chat and Conversation Management:** a chat interface with streamed replies and stored conversation history.
 - **Persistent Memory Management:** summarizing conversations into memories, giving each memory a confidence score that decreases over time, and asking the user to resolve conflicting information while keeping a version history.
 - **AI Project Workspace:** projects with their own conversations, tasks, summaries, and decisions.
-- **Knowledge Base and RAG:** uploading PDF, TXT, and Markdown files and answering questions from them with Retrieval-Augmented Generation.
+- **Knowledge Base and GraphRAG:** uploading PDF, TXT, and Markdown files, building a knowledge graph from them, and answering questions from them with GraphRAG (Retrieval-Augmented Generation that uses the graph), with a live view of the graph while an answer is written.
 - **Multi-Agent Collaboration:** research, planning, reviewing, and response agents managed by an orchestrator that routes each subtask to a local model, a smaller cloud model, or a stronger cloud model based on its complexity, and logs the cost and response time.
 - **PDF Report Generation and System Security:** downloadable reports, together with authentication, authorization, input validation, and memory separation.
 
@@ -127,16 +129,16 @@ Software process model. The project follows the Agile model, which was also chos
 
 # System Overview:
 
-Synoras AI is a web application with a browser frontend, a Python backend, and a set of background and data services. Users chat with an AI assistant that remembers earlier conversations. Each memory has a confidence score that drops over time, and when new information contradicts a stored memory, the system asks the user which version to keep and records the change in a version history. Users can also organize work in project workspaces, upload documents to a knowledge base, and ask questions answered from those documents through Retrieval-Augmented Generation (RAG). For complex requests, an orchestrator divides the work among research, planning, reviewing, and response agents. Before each subtask runs, a classifier rates its complexity and a router sends it to a local model, a smaller cloud model, or a stronger cloud model. The system logs the model used, the response time, and the estimated cost of every routed subtask, and users can export summaries and reports as PDF files.
+Synoras AI is a web application with a browser frontend, a Python backend, and a set of background and data services. Users chat with an AI assistant that remembers earlier conversations. Each memory has a confidence score that drops over time, and when new information contradicts a stored memory, the system asks the user which version to keep and records the change in a version history. Users can also organize work in project workspaces, upload documents to a knowledge base, and ask questions answered from those documents through GraphRAG, a form of Retrieval-Augmented Generation (RAG) that uses a knowledge graph built from the documents. For complex requests, an orchestrator divides the work among research, planning, reviewing, and response agents. Before each subtask runs, a classifier rates its complexity and a router sends it to a local model, a smaller cloud model, or a stronger cloud model. The system logs the model used, the response time, and the estimated cost of every routed subtask, and users can export summaries and reports as PDF files.
 
 ## Architectural Design:
 
 Synoras AI uses a layered, client-server architecture, shown in the diagram below. Each layer has one job and talks only to the layers next to it, which keeps the system easy to test and change.
 
-- **Client layer:** a Next.js web application built with React, TypeScript, and Tailwind CSS. It shows the chat, memory, project, knowledge base, routing log, and admin screens, and it talks to the backend over HTTPS using REST calls and streamed responses.
-- **Application layer:** a FastAPI backend with eight parts: authentication and authorization, the chat and conversation service, the memory service (extraction, confidence decay, and conflict detection), the project and task service, the knowledge base and RAG service, the agent orchestrator (built with LangChain and LangGraph), the complexity classifier and model router, and the routing and execution logger.
-- **Background and report services:** a Celery worker runs long jobs such as conversation summaries and the daily confidence updates, and a Node.js service generates PDF reports.
-- **Data layer:** PostgreSQL with pgvector stores users, memories, version histories, projects, logs, and embeddings. Redis acts as a cache and job queue, and uploaded documents are stored on the local disk.
+- **Client layer:** a Next.js web application built with React, TypeScript, and Tailwind CSS. It shows the chat, memory, project, knowledge base, routing log, and admin screens, and it talks to the backend over HTTPS using REST calls and streamed responses (Server-Sent Events carry the answer together with the live knowledge graph events). The chat screen has a knowledge graph panel.
+- **Application layer:** a FastAPI backend with eight parts: authentication and authorization, the chat and conversation service, the memory service (extraction, confidence decay, and conflict detection), the project and task service, the knowledge base and GraphRAG service (document indexing, knowledge graph extraction, and graph retrieval), the agent orchestrator (built with LangChain and LangGraph), the complexity classifier and model router, and the routing and execution logger.
+- **Background and report services:** a Celery worker runs long jobs such as conversation summaries, the daily confidence updates, document indexing, and knowledge graph extraction, and a Node.js service generates PDF reports.
+- **Data layer:** PostgreSQL with pgvector stores users, memories, version histories, projects, logs, embeddings, and the knowledge graph (entities and relationships; there is no separate graph database). Redis acts as a cache and job queue, and uploaded documents are stored on the local disk.
 - **Model layer:** a local model run through Ollama for low-complexity subtasks, a smaller cloud model for medium ones, and a stronger cloud model for high-complexity ones.
 
 The orchestrator sends each subtask to the router, and the router chooses the model and writes the result to the log. Because each service has its own responsibility, a model can be replaced or a service improved without changing the rest of the system.
@@ -169,7 +171,7 @@ Figure 3.2.3: Activity Diagram: Multi-Agent Task with Complexity-Aware Routing
 
 ### Document Upload and Question Answering:
 
-When a user uploads a document, the system first checks the file type and size. A valid file is saved on the local disk, and a background job extracts its text, splits it into chunks, and stores the embeddings in pgvector. Once the document is ready, the user can ask a question about it. The system searches for the most relevant chunks and the model writes an answer with source references. If no relevant chunk is found, the system replies that no answer was found, as shown in the figure on the next page.
+When a user uploads a document, the system first checks the file type and size. A valid file is saved on the local disk, and a background job extracts its text, splits it into chunks, and stores the embeddings in pgvector. The document is then "Indexed" and can already be searched by similarity. A second background job extracts the entities and relationships from each chunk, using the model the complexity router picks for it, and stores them as a knowledge graph; the document list shows its progress. When the user asks a question about the documents, the system uses GraphRAG as a graph of steps: it finds the entities most similar to the question, follows their relationships to related entities, collects the chunks that support them, and the model writes an answer with source references. Each step sends an event to the browser, so the knowledge graph panel can highlight what is being used while the answer is written. If the graph of a document is not ready, its chunks are found by similarity search instead. If no relevant chunk is found, the system replies that no answer was found, as shown in the figure on the next page.
 
 Figure 3.2.4: Activity Diagram: Document Upload and Question Answering
 
@@ -179,7 +181,7 @@ This section presents the design models of Synoras AI. The class diagram shows t
 
 ## Class Diagram:
 
-The class diagram below shows the main classes of Synoras AI. A User owns many Memory items and many Projects. Each Project contains many Tasks, Chats, Documents, Project Notes (summaries and decisions), and Reports. Each Document is split into many Document Chunks for search, and each Chat holds many Messages. A complex Message is divided into Subtasks that are classified, run, and reviewed. The symbols 1 and * show that one object is linked to many objects.
+The class diagram below shows the main classes of Synoras AI. A User owns many Memory items and many Projects. Each Project contains many Tasks, Chats, Documents, Project Notes (summaries and decisions), and Reports. Each Document is split into many Document Chunks for search. A Chunk can mention many Graph Entities, and Graph Relations connect pairs of Graph Entities; together they make the knowledge graph of a User or of a Project. Each Chat holds many Messages. A complex Message is divided into Subtasks that are classified, run, and reviewed. The symbols 1 and * show that one object is linked to many objects.
 
 Figure 4.1.1: Class Diagram of Synoras AI
 
@@ -195,9 +197,27 @@ Figure 4.2.1: Sequence Diagram: Chat with Memory
 
 ### Document Upload and Question Answering:
 
-When the user uploads a document, the web app sends it to the backend API, which queues a background job for the worker. The worker extracts the text, splits it into chunks, saves the vectors in the database, and reports that the document is ready. When the user later asks a question, the backend searches the database for the most relevant chunks and sends them with the question to the AI model. The model’s answer, together with its sources, is returned through the web app and shown to the user.
+When the user uploads a document, the web app sends it to the backend API, which queues a background job for the worker. The worker extracts the text, splits it into chunks, saves the vectors in the database, and reports that the document is ready. The worker then runs a second job that extracts entities and relationships from each chunk with the model chosen by the router, and saves them in the database. When the user later asks a question, the backend runs the GraphRAG steps: it searches for the entities closest to the question, follows their relationships, collects the supporting chunks, and sends them with the question to the AI model. The backend streams the model’s answer, together with its sources and an event after each step, to the web app (see Live Graph Events below). The web app shows the answer and highlights the entities and relationships that were used in the knowledge graph panel.
 
 Figure 4.2.2: Sequence Diagram: Document Upload and Question Answering
+
+### Live Graph Events (GraphRAG):
+
+The answer to a question about the documents is sent to the browser as one stream of Server-Sent Events. The stream is started by a POST request, so the login token can be sent in the request header. It carries the retrieval events and the answer text in the order in which they happen. The knowledge graph panel uses the events to highlight entities and relationships, so the user sees what is being used while the answer is written.
+
+Table 4.2.1: Events of the Answer Stream
+
+| **Event** | **Sent when** | **Content** |
+|---|---|---|
+| retrieval_started | The question has been received | The knowledge base used (personal or a project) and whether its graph is ready |
+| entities_found | The entities closest to the question are found | Entity IDs, names, and similarity scores |
+| graph_expanded | The relationships have been followed | IDs of the entities and relationships reached, and how many steps away each one is |
+| chunks_collected | The supporting chunks are collected | Chunk IDs with the document name and page |
+| model_selected | The router has chosen the model | The model name and the complexity level |
+| token | The model writes a part of the answer | The next piece of the answer text |
+| sources | The answer is complete | The documents and sections used, and how many entities and relationships were used |
+| done | The stream ends | Message ID, model used, response time, and estimated cost |
+| error | Something fails | A plain message for the user and whether a retry is possible |
 
 ## State Transition Diagram:
 
@@ -217,15 +237,15 @@ Figure 4.4.1: Data Flow Diagram Level 0 (Context Diagram)
 
 ### Level 1:
 
-Level 1 breaks the system into six processes. Manage Access handles login and user records, and gives the admin the logs and job status. Manage Projects saves the user’s projects and tasks and returns the project list. Chat and Route Tasks sends prompts to the AI models, saves chats and subtask logs, shows the routing log on request, and passes new facts to the memory store. Manage Memory updates the saved memories and versions, and lets the user view, edit, and delete them. Manage Documents stores document chunks and vectors, and answers questions with the help of the AI models. Generate Reports builds the PDF report from the project content and saves it. A data store with a double line on its left edge, and an outside party marked with a star, appears more than once in the diagram.
+Level 1 breaks the system into six processes. Manage Access handles login and user records, and gives the admin the logs and job status. Manage Projects saves the user’s projects and tasks and returns the project list. Chat and Route Tasks sends prompts to the AI models, saves chats and subtask logs, shows the routing log on request, and passes new facts to the memory store. Manage Memory updates the saved memories and versions, and lets the user view, edit, and delete them. Manage Documents stores document chunks, vectors, and the knowledge graph (entities and relationships), and answers questions with GraphRAG and the help of the AI models. Generate Reports builds the PDF report from the project content and saves it. A data store with a double line on its left edge, and an outside party marked with a star, appears more than once in the diagram.
 
 Figure 4.4.2: Data Flow Diagram Level 1
 
 # Data Design:
 
-The information in Synoras AI is stored in a PostgreSQL database. Each main item of the system, such as users, projects, tasks, chats, messages, memories, documents, and reports, is kept as a table, and the tables are linked using primary keys and foreign keys. A user owns many projects and many memories, and a memory can also belong to one project. A project holds many tasks, chats, documents, and reports, and each chat holds many messages. A complex message is divided into subtasks, and the model, response time, and estimated cost of each subtask are saved. When a memory is replaced, its old content is saved in a separate version table, so the full history is kept. Conflicts that wait for the user's choice are kept in a conflicts table, the memories used in each reply are kept in a link table, and every agent step and every administrator action is saved in its own log table. Short project notes (summaries and decisions) are kept in a project notes table.
+The information in Synoras AI is stored in a PostgreSQL database. Each main item of the system, such as users, projects, tasks, chats, messages, memories, documents, and reports, is kept as a table, and the tables are linked using primary keys and foreign keys. A user owns many projects and many memories, and a memory can also belong to one project. A project holds many tasks, chats, documents, and reports, and each chat holds many messages. A complex message is divided into subtasks, and the model, response time, and estimated cost of each subtask are saved. When a memory is replaced, its old content is saved in a separate version table, so the full history is kept. Conflicts that wait for the user's choice are kept in a conflicts table, the memories used in each reply are kept in a link table, and every agent step and every administrator action is saved in its own log table. Short project notes (summaries and decisions) are kept in a project notes table. The knowledge graph made from the documents is kept in four tables: graph entities, graph relations, and two link tables that connect each entity and each relation to the document chunks it comes from. Every entity and relation has its owner (the user and, for a project, the project), so each knowledge base has its own graph. Every call that extracts entities and relationships is saved in a graph extraction log table.
 
-Uploaded documents are split into chunks. The text of each chunk and its embedding are stored in the document chunks table using the pgvector extension, which allows similarity search. The uploaded files themselves are stored on the local disk, and the database keeps only their paths. Redis is used as a temporary store for background jobs and is not part of the permanent data.
+Uploaded documents are split into chunks. The text of each chunk and its embedding are stored in the document chunks table using the pgvector extension, which allows similarity search. The name and description of each entity also have an embedding, so entities can be found by their similarity to a question. An entity is stored once for each knowledge base (personal or one project): the same name and type is linked to every chunk that mentions it. When a document is deleted, its chunks and chunk links are deleted, and entities and relations that no other chunk supports are deleted with them. The uploaded files themselves are stored on the local disk, and the database keeps only their paths. Redis is used as a temporary store for background jobs and is not part of the permanent data.
 
 ## Entity Relationship Diagram:
 
@@ -257,6 +277,7 @@ Table 5.2.1: Data Dictionary of Synoras AI
 |  | text | TEXT | Text content of the chunk |
 |  | embedding | VECTOR | Embedding of the text, used for similarity search |
 |  | page_no | INTEGER | Page number the chunk was taken from |
+|  | extracted_at | TIMESTAMP | Date and time entities and relationships were extracted from this chunk (empty until the extraction has run on it; used to show progress and to continue after a stop) |
 | **documents** | document_id | INTEGER (PK) | Unique ID of the document |
 |  | user_id | INTEGER (FK) | User that owns the document |
 |  | project_id | INTEGER (FK) | Project that the document belongs to (empty for the personal knowledge base) |
@@ -265,6 +286,37 @@ Table 5.2.1: Data Dictionary of Synoras AI
 |  | status | VARCHAR(20) | Processing state: Processing, Indexed, or Failed |
 |  | file_type | VARCHAR(10) | PDF, TXT, or MD |
 |  | created_at | TIMESTAMP | Date and time the document was uploaded |
+|  | graph_status | VARCHAR(20) | Knowledge graph state: Pending, Extracting, Ready, or Failed. It is separate from status: a document can be searched by similarity as soon as its status is Indexed |
+| **graph_entities** | entity_id | INTEGER (PK) | Unique ID of the entity |
+|  | user_id | INTEGER (FK) | User that owns the entity |
+|  | project_id | INTEGER (FK) | Project of the entity (empty for the personal knowledge base) |
+|  | name | VARCHAR(200) | Name of the entity as found in the text, for example "Ohm's law" |
+|  | entity_type | VARCHAR(50) | Kind of entity, for example Person, Organization, Concept, Place, or Event |
+|  | description | TEXT | Short description built from the chunks that mention the entity |
+|  | embedding | VECTOR | Embedding of the name and description, used to find the entity by similarity to a question |
+|  | created_at | TIMESTAMP | Date and time the entity was first found |
+| **graph_entity_chunks** | entity_id | INTEGER (FK) | Entity that is mentioned |
+|  | chunk_id | INTEGER (FK) | Chunk that mentions the entity |
+| **graph_extraction_log** | log_id | INTEGER (PK) | Unique ID of the log entry |
+|  | document_id | INTEGER (FK) | Document the chunk belongs to |
+|  | chunk_id | INTEGER (FK) | Chunk that was processed |
+|  | user_id | INTEGER (FK) | User that owns the document |
+|  | complexity | VARCHAR(10) | Rating given by the classifier: Low, Medium, or High |
+|  | model_used | VARCHAR(50) | Model that ran the extraction |
+|  | response_time | FLOAT | Time taken by the extraction call, in seconds |
+|  | cost | FLOAT | Estimated cost of the call |
+|  | status | VARCHAR(20) | Success, Retried, or Failed |
+|  | created_at | TIMESTAMP | Date and time of the call |
+| **graph_relation_chunks** | relation_id | INTEGER (FK) | Relation that is described |
+|  | chunk_id | INTEGER (FK) | Chunk that supports the relation |
+| **graph_relations** | relation_id | INTEGER (PK) | Unique ID of the relation |
+|  | user_id | INTEGER (FK) | User that owns the relation |
+|  | project_id | INTEGER (FK) | Project of the relation (empty for the personal knowledge base) |
+|  | source_entity_id | INTEGER (FK) | Entity the relation starts from |
+|  | target_entity_id | INTEGER (FK) | Entity the relation points to |
+|  | relation_type | VARCHAR(100) | Kind of relation, for example "works for" or "is part of" |
+|  | description | TEXT | Short sentence that describes the relation |
+|  | created_at | TIMESTAMP | Date and time the relation was first found |
 | **memories** | memory_id | INTEGER (PK) | Unique ID of the memory |
 |  | user_id | INTEGER (FK) | User that the memory belongs to |
 |  | project_id | INTEGER (FK) | Project of a project memory (empty for a personal memory) |
@@ -371,16 +423,16 @@ A scheduled job lowers the confidence of every memory as time passes. A memory w
 
 ## Document Processing:
 
-After an upload, a background job extracts the text, splits it into chunks, and stores the embeddings.
+After an upload, a background job extracts the text, splits it into chunks, and stores the embeddings. When the document is Indexed, a second background job builds its knowledge graph (see 6.8).
 
-| FUNCTION uploadDocument(file, userId, projectId) IF file type is not PDF, TXT, or Markdown OR file size > 20 MB THEN RETURN error that states the accepted types and the size limit END IF path = save file on local disk document = create document record with status = "Processing" queue background job processDocument(document) END FUNCTION FUNCTION processDocument(document)               // runs in the background worker text = extract text from the file at document.filePath IF no text can be extracted THEN document.status = "Failed" RETURN END IF chunks = split text into chunks FOR EACH chunk IN chunks vector = embeddingModel.embed(chunk.text) save chunk.text, vector, and page number in the chunks table END FOR document.status = "Indexed" END FUNCTION |
+| FUNCTION uploadDocument(file, userId, projectId) IF file type is not PDF, TXT, or Markdown OR file size > 20 MB THEN RETURN error that states the accepted types and the size limit END IF path = save file on local disk document = create document record with status = "Processing" queue background job processDocument(document) END FUNCTION FUNCTION processDocument(document)               // runs in the background worker text = extract text from the file at document.filePath IF no text can be extracted THEN document.status = "Failed" RETURN END IF chunks = split text into chunks FOR EACH chunk IN chunks vector = embeddingModel.embed(chunk.text) save chunk.text, vector, and page number in the chunks table END FOR document.status = "Indexed" document.graphStatus = "Pending" queue background job extractGraph(document) END FUNCTION |
 |---|
 
 ## Document Search and Answer:
 
-To answer a question, the system finds the most similar chunks in the documents the user may access and gives them to the model.
+To answer a question, the system uses GraphRAG. It runs as a LangGraph graph of steps, and after each step it sends an event to the browser (see Table 4.2.1). It finds the entities most similar to the question in the knowledge graphs the user may access, follows their relationships, collects the chunks that support them, and gives those chunks to the model.
 
-| FUNCTION answerQuestion(question, userId, projectId) questionVector = embeddingModel.embed(question) chunks = search chunks table for the closest vectors in documents that userId or the project is allowed to access IF no relevant chunk is found THEN RETURN "The documents do not contain an answer" END IF answer = model.run(question, chunks) RETURN answer with the file name and section of each chunk used END FUNCTION |
+| FUNCTION answerQuestion(question, userId, projectId)          // a LangGraph graph of steps; each step sends an event to the browser questionVector = embeddingModel.embed(question)          // step 1: embed the question seeds = closest entities found by vector search in graph_entities, only in the knowledge bases that userId or the project is allowed to access          // step 2: entities found nodes, edges = start at the seeds and follow graph_relations up to 2 steps away, keep at most MAX_NODES entities          // step 3: graph expanded chunks = chunks linked to those entities and relations (through graph_entity_chunks and graph_relation_chunks), ranked by similarity to the question, keep the best MAX_CHUNKS          // step 4: chunks collected FOR EACH document in these knowledge bases whose graphStatus is not "Ready" chunks = chunks + the closest chunks of that document found by vector search in document_chunks END FOR IF chunks is empty THEN RETURN "The documents do not contain an answer" END IF model = router picks the model for the question (see 6.2) answer = model.run(question, chunks, the relationships between the entities)          // step 5: answer, streamed piece by piece RETURN answer with the file name and page of each chunk used, and the IDs of the entities and relationships used END FUNCTION |
 |---|
 
 ## Report Generation:
@@ -390,11 +442,20 @@ This algorithm collects the content of a project and asks the PDF service to bui
 | FUNCTION generateReport(userId, source, reportType) // reportType: conversation summary, project summary, or AI transparency report data = load the data of userId for the chosen source and reportType IF data is empty THEN RETURN "There is no data to report" validate data file = pdfService.createPdf(reportType, data) IF file could not be created THEN RETURN error with a retry option save report record with title, format = "PDF", and file path RETURN file for download END FUNCTION |
 |---|
 
+## Knowledge Graph Extraction:
+
+After a document is Indexed, a background job reads each chunk with a language model and stores the entities and relationships it finds. Every call goes through the complexity classifier and the router, and is logged with its model, response time, and estimated cost.
+
+| FUNCTION extractGraph(document)               // runs in the background worker document.graphStatus = "Extracting" FOR EACH chunk IN document's chunks WHERE chunk.extractedAt is empty complexity = classifier.rate(chunk.text)          // Low, Medium, or High IF classifier fails OR rating is uncertain THEN complexity = "High" END IF model = router picks the model for the complexity     // same rules as 6.2: the cheapest tier first, a smaller cloud model if the local model is unavailable startTime = now() result = graphTransformer.extract(chunk.text, model)     // entities and relationships; retry up to 2 times on failure IF complexity is "Low" or "Medium" AND result fails the quality check THEN model = stronger cloud model result = graphTransformer.extract(chunk.text, model) END IF IF result still failed THEN save the failure in the log and continue with the next chunk END IF FOR EACH entity IN result.entities e = find the entity with the same name and type in the same knowledge base (userId, projectId) IF e does not exist THEN create it with embedding = embeddingModel.embed(name + description) END IF link e to chunk END FOR FOR EACH relation IN result.relations find or create the relation between its two entities, and link it to chunk END FOR chunk.extractedAt = now() save chunk, complexity, model, response time, and estimated cost in graph_extraction_log END FOR IF every chunk has an extractedAt THEN document.graphStatus = "Ready" ELSE document.graphStatus = "Failed" with the reason END IF END FUNCTION |
+|---|
+
 # Software Requirements Traceability Matrix:
 
 The table below shows how each requirement of the SRS is met by this design document. For each requirement it lists the design elements that meet it and the sections where they are described. One requirement can be met by several design elements, and one design element can meet several requirements.
 
 ## Traceability Matrix:
+
+Rows marked with ◆ were changed by the GraphRAG change (see decisions A19 and spec-changes.md). FR-27 and FR-28 are new.
 
 Table 7.1.1: Requirements Traceability Matrix
 
@@ -406,9 +467,10 @@ Table 7.1.1: Requirements Traceability Matrix
 | **FR-2** | Class Diagram | User | login(), logout() |
 |  | ER Diagram | users | status, failed_attempts, locked_until |
 |  | Algorithm | 6.1 User Registration and Login | login() |
-| **FR-3** | Class Diagram | Chat, Message | sendMessage(), save() |
+| **FR-3 ◆** | Class Diagram | Chat, Message | sendMessage(), save() |
 |  | Sequence Diagram | Chat with Memory | Send message, Stream reply |
 |  | Algorithm | 6.2 Complexity Classification and Routing | handleRequest() |
+|  | Sequence Diagram | Live Graph Events (GraphRAG) | Answer stream events (Table 4.2.1) |
 | **FR-4** | Class Diagram | Chat, Message | startChat() |
 |  | ER Diagram | chats, messages | chat_id, user_id, title, sender, text |
 |  | DFD Level 1 | 3.0 Chat and Route Tasks | D2 Projects, Tasks, Chats, Messages |
@@ -447,20 +509,22 @@ Table 7.1.1: Requirements Traceability Matrix
 | **FR-14** | Activity Diagram | Document Upload and Question Answering | Validate file type and size |
 |  | Class Diagram | Document | upload() |
 |  | Algorithm | 6.5 Document Processing | uploadDocument() |
-| **FR-15** | Sequence Diagram | Document Upload and Question Answering | Queue job, Save vectors |
+| **FR-15 ◆** | Sequence Diagram | Document Upload and Question Answering | Queue job, Save vectors, Second job (graph) |
 |  | Class Diagram | DocumentChunk | store() |
-|  | ER Diagram | document_chunks | text, embedding, page_no |
-|  | Algorithm | 6.5 Document Processing | processDocument() |
-| **FR-16** | Class Diagram | Document | delete(), process() |
-|  | ER Diagram | documents | user_id, file_type, status, file_path, created_at |
-|  | DFD Level 1 | 5.0 Manage Documents | D4 Documents, Chunks |
-| **FR-17** | Activity Diagram | Document Upload and Question Answering | Search pgvector for the most relevant chunks |
-|  | Sequence Diagram | Document Upload and Question Answering | Search chunks, Answer, sources |
-|  | Class Diagram | Document | search() |
+|  | ER Diagram | document_chunks, documents | text, embedding, page_no, extracted_at; graph_status |
+|  | Algorithm | 6.5 Document Processing | processDocument() (queues extractGraph()) |
+| **FR-16 ◆** | Class Diagram | Document | delete(), process() |
+|  | ER Diagram | documents, graph_entities, graph_relations, graph_entity_chunks, graph_relation_chunks | user_id, file_type, status, graph_status, file_path, created_at (graph entries that no other document supports are removed with the document) |
+|  | DFD Level 1 | 5.0 Manage Documents | D4 Documents, Chunks, Knowledge graph |
+| **FR-17 ◆** | Activity Diagram | Document Upload and Question Answering | Find entities, expand the graph, collect chunks, answer |
+|  | Sequence Diagram | Document Upload and Question Answering | Find entities, expand, collect chunks, Answer, sources |
+|  | Class Diagram | Document, GraphEntity | search(), expand() |
+|  | ER Diagram | graph_entities, graph_relations, graph_entity_chunks, graph_relation_chunks | embedding; source_entity_id, target_entity_id; entity_id, relation_id, chunk_id |
 |  | Algorithm | 6.6 Document Search and Answer | answerQuestion() |
-| **FR-18** | Activity Diagram | Multi-Agent Task with Complexity-Aware Routing | Planning agent, Reviewer agent, Response agent |
+| **FR-18 ◆** | Activity Diagram | Multi-Agent Task with Complexity-Aware Routing | Planning agent, Reviewer agent, Response agent |
 |  | Class Diagram | Subtask | run(), review() |
 |  | Algorithm | 6.2 Complexity Classification and Routing | handleRequest() |
+|  | Algorithm | 6.6 Document Search and Answer | answerQuestion() (the research agent uses the GraphRAG retrieval) |
 | **FR-19** | Activity Diagram | Multi-Agent Task with Complexity-Aware Routing | Rerun on the stronger model |
 |  | Algorithm | 6.2 Complexity Classification and Routing | retry up to 2 times |
 | **FR-20** | Class Diagram | Subtask | classify() |
@@ -469,10 +533,11 @@ Table 7.1.1: Requirements Traceability Matrix
 | **FR-21** | Architecture Diagram | AI Orchestration and Model Router | Local, smaller cloud, and stronger cloud models |
 |  | Activity Diagram | Multi-Agent Task with Complexity-Aware Routing | Low, Medium, High decision |
 |  | Algorithm | 6.2 Complexity Classification and Routing | handleRequest() |
-| **FR-22** | Class Diagram | Subtask | modelUsed, cost |
-|  | ER Diagram | subtasks, agent_steps | model_used, response_time, cost; agent_name, status |
+| **FR-22 ◆** | Class Diagram | Subtask | modelUsed, cost |
+|  | ER Diagram | subtasks, agent_steps, graph_extraction_log | model_used, response_time, cost; agent_name, status; complexity, model_used, response_time, cost, status |
 |  | DFD Level 1 | 3.0 Chat and Route Tasks | D6 Subtask Logs |
 |  | Algorithm | 6.2 Complexity Classification and Routing | log of each subtask |
+|  | Algorithm | 6.8 Knowledge Graph Extraction | log of each extraction call |
 | **FR-23** | ER Diagram | subtasks | complexity, model_used, cost |
 |  | DFD Level 1 | 3.0 Chat and Route Tasks | Log request, Routing log |
 |  | Screen Image | 8.1.5 Agent Pipeline and Routing Log Screen | Routing log table, Session summary |
@@ -480,25 +545,37 @@ Table 7.1.1: Requirements Traceability Matrix
 |  | ER Diagram | reports | report_id, user_id, project_id, title, format |
 |  | DFD Level 1 | 6.0 Generate Reports | D5 Reports |
 |  | Algorithm | 6.7 Report Generation | generateReport() |
-| **FR-25** | ER Diagram | users, system_log | status; action, created_at |
+| **FR-25 ◆** | ER Diagram | users, system_log | status; action, created_at |
 |  | DFD Level 1 | 1.0 Manage Access | User management |
 | **FR-26** | ER Diagram | system_log | action, details, created_at |
 |  | DFD Level 1 | 1.0 Manage Access | Logs, job status |
+| **FR-27 ◆** | Activity Diagram | Document Upload and Question Answering | Extract entities and relationships (second background job) |
+|  | Sequence Diagram | Document Upload and Question Answering | Second job: extract, save graph |
+|  | Class Diagram | GraphEntity, GraphRelation | extract(), link() |
+|  | ER Diagram | graph_entities, graph_relations, graph_entity_chunks, graph_relation_chunks, graph_extraction_log; documents, document_chunks | name, entity_type, embedding; source_entity_id, target_entity_id, relation_type; model_used, response_time, cost; graph_status, extracted_at |
+|  | Algorithm | 6.8 Knowledge Graph Extraction | extractGraph() |
+| **FR-28 ◆** | Sequence Diagram | Live Graph Events (GraphRAG) | Answer stream events (Table 4.2.1) |
+|  | Screen Image | 8.1.2 Chat Screen with Memory Panel and Knowledge Graph Panel | Knowledge graph tab |
+|  | Screen Objects | 8.2.2 Objects and Actions of the Chat Screen | Knowledge graph tab rows |
+|  | Algorithm | 6.6 Document Search and Answer | An event after each step |
 | **USE-1 to USE-7** | Screen Image | 8.1 Screen Images | All six screens |
 |  | Screen Objects | 8.2 Screen Objects and Actions | All six tables |
+| **USE-8 ◆** | Screen Objects | 8.2.2 Objects and Actions of the Chat Screen | Knowledge graph tab: legend and limit |
 | **PER-1, PER-9** | Architecture Diagram | Application Tier and Background Tier | Docker, Redis, Celery |
 | **PER-2** | Sequence Diagram | Chat with Memory | Stream reply |
-| **PER-3** | ER Diagram | memories, document_chunks | pgvector similarity search |
+| **PER-3 ◆** | ER Diagram | memories, document_chunks, graph_entities | pgvector similarity search |
 | **PER-4, PER-11** | Activity Diagram | Memory Extraction and Conflict Resolution | Compare with similar stored memories |
 |  | Algorithm | 6.3 Memory Extraction and Conflict Resolution | saveMemories() |
 | **PER-5, PER-10** | Activity Diagram | Multi-Agent Task with Complexity-Aware Routing | Classifier and router |
 |  | Algorithm | 6.2 Complexity Classification and Routing | handleRequest() |
 | **PER-6** | Activity Diagram | Confidence Decay and Re-verification | Daily scheduled job |
 |  | Algorithm | 6.4 Confidence Decay and Re-verification | decayMemories() |
-| **PER-7** | Activity Diagram | Document Upload and Question Answering | Background job |
+| **PER-7 ◆** | Activity Diagram | Document Upload and Question Answering | Background job (indexing only; the graph job has no fixed limit) |
 |  | Algorithm | 6.5 Document Processing | processDocument() |
 | **PER-8** | Architecture Diagram | Background Tier | Node.js PDF service |
 |  | Algorithm | 6.7 Report Generation | generateReport() |
+| **PER-12 ◆** | Algorithm | 6.6 Document Search and Answer | Steps 2 to 4 (entities, expansion, chunks) |
+| **PER-13 ◆** | Sequence Diagram | Live Graph Events (GraphRAG) | An event after each step |
 
 # Human Interface Design:
 
@@ -516,9 +593,9 @@ Figure 8.1.1: Register / Log In Screen
 
 ### Chat Screen:
 
-The chat screen has a list of conversations on the left, the conversation with a message box in the center, and a memory panel on the right. The panel shows each memory with its confidence bar and status. Under each reply, the screen shows how many memories were used and which model answered. When a reply relies on a memory that needs re-verification, buttons let the user confirm or update it.
+The chat screen has a list of conversations on the left, the conversation with a message box in the center, and a side panel on the right with two tabs, Memories and Knowledge graph. The Memories tab shows each memory with its confidence bar and status. The Knowledge graph tab shows the knowledge graph of the selected knowledge base (the user's personal one, or the project's): entities are circles colored by type, and relationships are lines between them. While an answer from the knowledge base is being written, the entities and relationships the system is using are highlighted step by step: first the entities found for the question, then those reached by following relationships. Under each reply, the screen shows how many memories were used and which model answered; for an answer from the knowledge base it also shows the sources and how many entities and relationships were used. When a reply relies on a memory that needs re-verification, buttons let the user confirm or update it.
 
-Figure 8.1.2: Chat Screen with Memory Panel
+Figure 8.1.2: Chat Screen with Memory Panel and Knowledge Graph Panel
 
 ### Memory Conflict Screen:
 
@@ -528,7 +605,7 @@ Figure 8.1.3: Memory Conflict Resolution Screen
 
 ### Project Workspace and Knowledge Base Screen:
 
-The project screen has a list of projects on the left and a task board with the columns To Do, In Progress, and Done. Below it, the knowledge base area shows the uploaded documents with their status, an upload button, and a box to ask a question about the documents. Answers show the source of the information.
+The project screen has a list of projects on the left and a task board with the columns To Do, In Progress, and Done. Below it, the knowledge base area shows the uploaded documents with their status and knowledge graph status (for example "Graph: Extracting, 12 of 40 sections"), an upload button, a button to open the knowledge graph panel, and a box to ask a question about the documents. Answers show the source of the information and how many entities and relationships were used, and the knowledge graph panel highlights them.
 
 Figure 8.1.4: Project Workspace with Task Board and Knowledge Base
 
@@ -564,7 +641,7 @@ Table 8.2.1: Objects and Actions of the Register / Log In Screen
 
 ### Chat Screen:
 
-This screen is where the user talks to the AI. The table lists the conversation list, message box, reply details, and memory panel, and what the user sees when using them.
+This screen is where the user talks to the AI. The table lists the conversation list, message box, reply details, and the side panel (memories and knowledge graph), and what the user sees when using them.
 
 Table 8.2.2: Objects and Actions of the Chat Screen
 
@@ -573,8 +650,15 @@ Table 8.2.2: Objects and Actions of the Chat Screen
 | Conversation list (left) | Click a conversation to reopen it, start a new one, search by keyword, or delete one | The selected conversation opens in the center. A deleted conversation asks for confirmation first |
 | Message box and Send button | Type a message and click Send | The reply appears word by word as it is generated. An empty message is not sent. If the model is unavailable, the message is kept and a retry is offered |
 | Reply details (under each reply) | Read the details | Shows how many memories were used and which model answered |
-| Memory panel (right) | View the memories with their confidence bar and status | Updates after each conversation |
+| Side panel tabs (right) | Switch between Memories and Knowledge graph | The chosen tab is shown |
+| Memories tab | View the memories with their confidence bar and status | Updates after each conversation |
 | Still correct and Update it buttons | Click when a reply used a memory that needs re-verification | Still correct resets the confidence. Update it lets the user edit the memory |
+| Knowledge source selector (next to the message box) | Choose what to ask: no knowledge base, the personal knowledge base, or a project's | The Knowledge graph tab shows the graph of the chosen knowledge base. With none chosen, the question is answered from memories and the conversation only |
+| Knowledge graph tab: graph view | View the graph, zoom, drag, and select an entity | Entities are circles colored by type and relationships are lines. Selecting an entity shows its type, description, and the documents it comes from |
+| Knowledge graph tab: live highlight | Watch while an answer is being written | The entities found for the question light up first, then the entities and relationships reached by following the graph. The highlight stays until the next question |
+| Knowledge graph tab: legend and limit | Read the legend of entity types | At most 150 entities are shown by default (the most connected ones and those used in the answer). A message says when more exist |
+| Knowledge graph tab: empty or not ready | Open the tab for a knowledge base without a ready graph | A message says that the graph is empty or still being built, with its progress, and that sections of documents without a ready graph are found by similarity search |
+| Source references (under a reply from the knowledge base) | Read the documents and sections used | Shows each document name and page, and how many entities and relationships were used |
 
 ### Memory Conflict Screen:
 
@@ -591,7 +675,7 @@ Table 8.2.3: Objects and Actions of the Memory Conflict Screen
 
 ### Project Workspace and Knowledge Base Screen:
 
-This screen lets the user manage projects, tasks, and documents. The table lists the project list, task board, upload button, document list, and question box, and the feedback for each.
+This screen lets the user manage projects, tasks, and documents. The table lists the project list, task board, upload button, document list, graph button, and question box, and the feedback for each.
 
 Table 8.2.4: Objects and Actions of the Project Workspace and Knowledge Base Screen
 
@@ -599,9 +683,10 @@ Table 8.2.4: Objects and Actions of the Project Workspace and Knowledge Base Scr
 |---|---|---|
 | Project list and New project button | Select a project, create, rename, or delete one | An empty or duplicate name is rejected. Deleting a project asks for confirmation |
 | Task board (To Do, In Progress, Done) | Add a task, move it between columns, edit it, or delete it | A task without a title is rejected. The task appears in the chosen column |
-| Upload file button | Choose a PDF, TXT, or Markdown file of up to 20 MB | The file appears with the status Processing, then Indexed. If it fails, the status is Failed and the reason is shown. Other file types and large files are rejected with a message |
-| Document list | View the status, delete a document, or re-index it | Deleting asks for confirmation and also removes the document's embeddings |
-| Question box and Ask button | Type a question about the documents and click Ask | The answer appears with the source document and section. If nothing relevant is found, a message says the documents do not contain an answer |
+| Upload file button | Choose a PDF, TXT, or Markdown file of up to 20 MB | The file appears with the status Processing, then Indexed. After that, its graph status goes from Pending to Extracting (with the progress, for example 12 of 40 sections) to Ready. If indexing fails, the status is Failed and the reason is shown; if the graph extraction fails, the graph status is Failed with the reason and a retry is offered. Other file types and large files are rejected with a message |
+| Document list | View the status and graph status, delete a document, re-index it, or retry its graph | Deleting asks for confirmation and also removes the document's embeddings and the graph entries that no other document supports. Re-indexing also rebuilds the graph entries |
+| Question box and Ask button | Type a question about the documents and click Ask | The answer appears with the source document and section and how many entities and relationships were used, and the knowledge graph panel highlights them. If nothing relevant is found, a message says the documents do not contain an answer |
+| Show knowledge graph button | Click to open the knowledge graph panel of this project | The panel opens beside the knowledge base area and shows the project's graph, as in the chat screen |
 
 ### Agent Pipeline and Routing Log Screen:
 

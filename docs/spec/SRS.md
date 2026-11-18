@@ -112,6 +112,10 @@ Table 4.16: Functional requirement FR-16 33
 
 Table 4.17: Functional requirement FR-17 33
 
+Table 4.17a: Functional requirement FR-27 33
+
+Table 4.17b: Functional requirement FR-28 33
+
 Table 4.18: Functional requirement FR-18 34
 
 Table 4.19: Functional requirement FR-19 34
@@ -156,13 +160,13 @@ This document describes the software requirements for Synoras AI, a web-based AI
 
 ## Purpose:
 
-This SRS specifies the requirements for Synoras AI, version 1.0. It covers the chat interface, persistent memory with confidence decay and conflict resolution, project workspaces, the knowledge base with Retrieval-Augmented Generation (RAG), multi-agent collaboration with complexity-based model routing, and PDF report generation. The document is the reference for design, implementation, and testing, so every feature built later should trace back to a requirement written here.
+This SRS specifies the requirements for Synoras AI, version 1.0. It covers the chat interface, persistent memory with confidence decay and conflict resolution, project workspaces, the knowledge base with GraphRAG (Retrieval-Augmented Generation that uses a knowledge graph), multi-agent collaboration with complexity-based model routing, and PDF report generation. The document is the reference for design, implementation, and testing, so every feature built later should trace back to a requirement written here.
 
 ## Scope:
 
 Synoras AI is a web application where users chat with an AI assistant that keeps useful information from earlier conversations. Instead of storing memories forever without checking them, the system gives each memory a confidence score that drops over time. When new information contradicts a stored memory, the system does not overwrite it. It asks the user which version is correct and keeps a history of the change [1], [2], [3], [4].
 
-Users can organize their work in project workspaces, upload PDF, TXT, and Markdown files to a knowledge base, and ask questions answered from those documents through RAG. For complex requests, an orchestrator splits the work among research, planning, reviewing, and response agents. Before assigning each subtask, it estimates how difficult the subtask is and sends easy ones to a smaller or local model and harder ones to a stronger cloud model, which lowers cost and response time [5], [6], [7]. Users can also export summaries and project information as PDF reports.
+Users can organize their work in project workspaces, upload PDF, TXT, and Markdown files to a knowledge base, and ask questions answered from those documents through GraphRAG, which builds a knowledge graph from the documents and shows it live while an answer is written. For complex requests, an orchestrator splits the work among research, planning, reviewing, and response agents. Before assigning each subtask, it estimates how difficult the subtask is and sends easy ones to a smaller or local model and harder ones to a stronger cloud model, which lowers cost and response time [5], [6], [7]. Users can also export summaries and project information as PDF reports.
 
 # Overall Description:
 
@@ -173,9 +177,9 @@ Synoras AI is a new, standalone product. It does not replace an existing system 
 The system has five main parts:
 
 - A Next.js web frontend that users interact with [8].
-- A FastAPI backend that handles authentication, memory logic, retrieval, and agent orchestration [9].
-- A PostgreSQL [10] database with the pgvector [11] extension for structured data and vector search.
-- A Redis-backed [12] Celery [13] worker for background jobs such as conversation summarizing and memory confidence updates.
+- A FastAPI backend that handles authentication, memory logic, retrieval (including GraphRAG over the knowledge graph), and agent orchestration [9].
+- A PostgreSQL [10] database with the pgvector [11] extension for structured data, vector search, and the knowledge graph.
+- A Redis-backed [12] Celery [13] worker for background jobs such as conversation summarizing, memory confidence updates, document indexing, and knowledge graph extraction.
 - A Node.js service that generates PDF reports.
 
 The backend talks to cloud language models through their APIs and to a smaller local model through a local runtime [14]. The orchestrator decides which one each subtask uses.
@@ -198,9 +202,9 @@ The backend talks to cloud language models through their APIs and to a smaller l
 
 ***CO-1:*** *The frontend shall be built with Next.js, React* *[16]**, and* *TypeScript* *[17]* *, styled with Tailwind CSS* *[18]**.*
 
-***CO-2:*** *The backend shall be written in Python using* *FastAPI**, and the multi-agent workflows shall be implemented with* *LangGraph* *[19]**.*
+***CO-2:*** *The backend shall be written in Python using* *FastAPI**, and the multi-agent workflows and the GraphRAG retrieval steps shall be implemented with* *LangGraph* *[19]**.*
 
-***CO-3:*** *PostgreSQL with* *pgvector* *shall be the only database for structured data and* *embeddings**.*
+***CO-3:*** *PostgreSQL with* *pgvector* *shall be the only database for structured data, the knowledge graph (no separate graph database), and* *embeddings**.*
 
 ***CO-4:*** *PDF reports shall be generated with a Node.js PDF-generation library.*
 
@@ -367,15 +371,15 @@ Table 3.7: Use Case Description for UC-7 (Upload Documents)
 |---|---|
 | **Use Case Name** | Upload Documents |
 | **Actors** | Primary Actor: User |
-| **Description** | The User uploads a PDF, TXT, or Markdown file to the knowledge base. The system extracts the text, splits it into sections, creates embeddings, and indexes it so it can be searched later. |
+| **Description** | The User uploads a PDF, TXT, or Markdown file to the knowledge base. The system extracts the text, splits it into sections, creates embeddings, and indexes it so it can be searched later. After that, in the background, the system also extracts the entities and relationships from each section and builds a knowledge graph that is used for GraphRAG answers. |
 | **Trigger** | The User chooses to upload a document in the knowledge base. |
 | **Preconditions** | PRE-1. The User is logged in. PRE-2. The User has a PDF, TXT, or Markdown file ready. |
-| **Postconditions** | POST-1. The document is stored and listed with the status "Indexed". POST-2. The document's embeddings are stored and can be searched. |
-| **Normal Flow** | **7.0 Upload a Document** 1. The User selects a file and chooses the knowledge base (personal or a project). 2. The system checks the file type and size. (see 7.0.E1, 7.0.E2) 3. The system stores the file and shows it with the status "Processing". 4. A background job extracts the text, splits it into sections, and creates embeddings. (see 7.0.E3) 5. The system saves the embeddings and changes the status to "Indexed". |
-| **Alternative Flows** | **7.1 Delete a document** 1. The User chooses delete and confirms. 2. The system removes the file and its embeddings. **7.2 Re-index a document** 1. The User chooses re-index. 2. The system repeats steps 4 and 5 of the normal flow. |
-| **Exceptions** | **7.0.E1 Unsupported file type** 1. The system rejects the file and lists the accepted types: PDF, TXT, and Markdown. **7.0.E2 File is larger than the size limit** 1. The system rejects the file and states the limit. **7.0.E3 Text cannot be extracted (for example, a scanned PDF with no text)** 1. The system marks the document as "Failed" and tells the User why. |
-| **Business Rules** | BR-17. Only PDF, TXT, and Markdown files shall be accepted. BR-18. A document shall be searchable only by the User, or the project members, who own it. |
-| **Assumptions** | 1. Uploaded PDFs contain selectable text. 2. The file size limit is 20 MB. |
+| **Postconditions** | POST-1. The document is stored and listed with the status "Indexed". POST-2. The document's embeddings are stored and can be searched. POST-3. The entities and relationships found in the document are stored as part of the User's knowledge graph (this can finish after the document is already "Indexed"). |
+| **Normal Flow** | **7.0 Upload a Document** 1. The User selects a file and chooses the knowledge base (personal or a project). 2. The system checks the file type and size. (see 7.0.E1, 7.0.E2) 3. The system stores the file and shows it with the status "Processing". 4. A background job extracts the text, splits it into sections, and creates embeddings. (see 7.0.E3) 5. The system saves the embeddings and changes the status to "Indexed". 6. The system queues a second background job for the document, and the document list shows its graph status as "Pending". 7. The job extracts the entities and relationships from each section with a language model, chosen for each section by the complexity classifier and the router (see UC-11), and stores them as part of the knowledge graph. The graph status changes to "Extracting" and then to "Ready". (see 7.0.E4) |
+| **Alternative Flows** | **7.1 Delete a document** 1. The User chooses delete and confirms. 2. The system removes the file, its embeddings, and the graph entries that no other document supports. **7.2 Re-index a document** 1. The User chooses re-index. 2. The system repeats steps 4 to 7 of the normal flow. |
+| **Exceptions** | **7.0.E1 Unsupported file type** 1. The system rejects the file and lists the accepted types: PDF, TXT, and Markdown. **7.0.E2 File is larger than the size limit** 1. The system rejects the file and states the limit. **7.0.E3 Text cannot be extracted (for example, a scanned PDF with no text)** 1. The system marks the document as "Failed" and tells the User why. **7.0.E4 Graph extraction fails for a section (for example, the model limit is reached)** 1. The system retries up to 2 times. 2. If it still fails, the system keeps the results of the other sections, shows the graph status "Failed" with the reason, and lets the User retry. The document stays searchable by similarity. |
+| **Business Rules** | BR-17. Only PDF, TXT, and Markdown files shall be accepted. BR-18. A document shall be searchable only by the User, or the project members, who own it. BR-27. The entities, relationships, and graph events made from a document shall be stored, retrieved, and shown only to the User, or the project members, who own the document. BR-28. Every entity-extraction call shall be written to the execution log with its model, response time, and estimated cost. |
+| **Assumptions** | 1. Uploaded PDFs contain selectable text. 2. The file size limit is 20 MB. 3. Graph extraction speed depends on the rate limits of the models used (free plans allow only a few requests per minute), so it can take much longer than indexing. |
 
 Table 3.8: Use Case Description for UC-8 (Ask Questions from Documents)
 
@@ -383,15 +387,15 @@ Table 3.8: Use Case Description for UC-8 (Ask Questions from Documents)
 |---|---|
 | **Use Case Name** | Ask Questions from Documents |
 | **Actors** | Primary Actor: User Secondary Actors: Cloud LLM Provider, Local Model Runtime |
-| **Description** | The User asks a question about the uploaded documents. The system finds the most relevant sections and uses Retrieval-Augmented Generation (RAG) to write an answer based on them, with references to the sources. |
+| **Description** | The User asks a question about the uploaded documents. The system uses GraphRAG: it finds the entities in the knowledge graph that are most related to the question, follows their relationships, collects the sections that support them, and writes an answer based on those sections, with references to the sources. While the answer is being written, a side panel shows the knowledge graph and highlights the entities and relationships that are used. |
 | **Trigger** | The User asks a question in the chat and selects the knowledge base as the source. |
 | **Preconditions** | PRE-1. The User is logged in. PRE-2. At least one document is indexed. |
-| **Postconditions** | POST-1. The answer and its source references are shown to the User and stored in the conversation. |
-| **Normal Flow** | **8.0 Ask a Question** 1. The User types a question and selects the knowledge base. 2. The system converts the question into an embedding. 3. The system searches the indexed documents for the most similar sections. (see 8.1) 4. The system selects a model for the request (see UC-11) and sends the question with the retrieved sections. 5. The model writes an answer based on those sections. (see 8.0.E1) 6. The system shows the answer with references to the source documents and sections. |
-| **Alternative Flows** | **8.1 No relevant sections found** 1. The system tells the User that the documents do not contain an answer. 2. The use case ends. |
+| **Postconditions** | POST-1. The answer and its source references are shown to the User and stored in the conversation. POST-2. The graph panel shows which entities and relationships the answer used. |
+| **Normal Flow** | **8.0 Ask a Question** 1. The User types a question and selects the knowledge base (personal or a project). The chat screen shows the knowledge graph panel. 2. The system converts the question into an embedding. 3. The system finds the entities most similar to the question and sends them to the browser, where the panel highlights them. (see 8.1, 8.2) 4. The system follows the relationships from those entities to related entities, up to 2 steps away, and sends the entities and relationships it reached to the browser. 5. The system collects the sections that support the entities and relationships. 6. The system selects a model for the request (see UC-11) and sends the question with the collected sections and relationships. 7. The model writes an answer based on them, and the system streams it to the User. (see 8.0.E1) 8. The system shows the answer with references to the source documents and sections. |
+| **Alternative Flows** | **8.1 No relevant sections found** 1. The system tells the User that the documents do not contain an answer. 2. The use case ends. **8.2 The graph is not ready** 1. For a document whose graph status is not "Ready", the system finds its sections by similarity search instead, and the panel says that the graph is not ready. 2. Return to step 6 of the normal flow. |
 | **Exceptions** | **8.0.E1 The selected model is unavailable** 1. The system informs the User and offers to retry. |
-| **Business Rules** | BR-19. Every document-based answer shall list the documents it used. BR-20. The system shall use only documents the User is allowed to access. |
-| **Assumptions** | 1. The answer quality depends on how well the documents were indexed. |
+| **Business Rules** | BR-19. Every document-based answer shall list the documents it used. BR-20. The system shall use only documents the User is allowed to access. BR-27 (see UC-7). |
+| **Assumptions** | 1. The answer quality depends on how well the documents were indexed and how complete the knowledge graph is. |
 
 Table 3.9: Use Case Description for UC-9 (Run Multi-Agent Task)
 
@@ -403,7 +407,7 @@ Table 3.9: Use Case Description for UC-9 (Run Multi-Agent Task)
 | **Trigger** | The User submits a request that needs several steps, or chooses to run it as a multi-agent task. |
 | **Preconditions** | PRE-1. The User is logged in. PRE-2. A chat or project workspace is open. PRE-3. At least one language model is reachable. |
 | **Postconditions** | POST-1. The final response is shown to the User and stored. POST-2. An execution log is stored with the agent, model, response time, and estimated cost for each step. |
-| **Normal Flow** | **9.0 Run a Multi-Agent Task** 1. The User submits the request. 2. The orchestrator passes the request to the planning agent. 3. The planning agent divides the request into smaller subtasks. 4. For each subtask, the orchestrator chooses a model (see UC-11). 5. The research agent collects relevant information from the knowledge base and the stored memories. (see 9.1) 6. The reviewer agent checks the findings for quality and completeness. (see 9.2) 7. The response agent combines the reviewed findings into one structured answer. 8. The system shows the answer to the User and stores the execution log. (see 9.0.E1, 9.0.E2) |
+| **Normal Flow** | **9.0 Run a Multi-Agent Task** 1. The User submits the request. 2. The orchestrator passes the request to the planning agent. 3. The planning agent divides the request into smaller subtasks. 4. For each subtask, the orchestrator chooses a model (see UC-11). 5. The research agent collects relevant information from the knowledge base (using the GraphRAG retrieval of UC-8) and the stored memories. (see 9.1) 6. The reviewer agent checks the findings for quality and completeness. (see 9.2) 7. The response agent combines the reviewed findings into one structured answer. 8. The system shows the answer to the User and stores the execution log. (see 9.0.E1, 9.0.E2) |
 | **Alternative Flows** | **9.1 No relevant documents found** 1. The research agent works from the model's general knowledge and notes that no uploaded source was used. 2. Return to step 6 of the normal flow. **9.2 The reviewer finds gaps** 1. The reviewer sends the findings back to the research agent with a note on what is missing. 2. Return to step 5 of the normal flow. |
 | **Exceptions** | **9.0.E1 An agent step fails or times out** 1. The orchestrator retries the step up to 2 times. 2. If it still fails, the system shows the User a partial result and says which step failed. **9.0.E2 No model is reachable** 1. The system stops the task and informs the User. |
 | **Business Rules** | BR-5. The reviewer and research agents shall loop at most 2 times for one task. BR-6. Every agent step shall be written to the execution log. |
@@ -432,7 +436,7 @@ Table 3.11: Use Case Description for UC-11 (Route Subtask to Model)
 | **Use Case Name** | Route Subtask to Model |
 | **Actors** | Primary Actor: System (Orchestrator) Secondary Actors: Cloud LLM Provider, Local Model Runtime |
 | **Description** | Before a subtask runs, the orchestrator estimates how complex it is and picks a model to match. Simple subtasks go to a smaller or local model. Harder ones go to a stronger cloud model. The decision, response time, and estimated cost are logged. |
-| **Trigger** | The orchestrator is about to run a subtask, from a chat message (UC-2) or a multi-agent task (UC-9). |
+| **Trigger** | The orchestrator is about to run a subtask, from a chat message (UC-2), a multi-agent task (UC-9), or a knowledge graph extraction job (UC-7). |
 | **Preconditions** | PRE-1. The subtask has been defined. PRE-2. The routing settings (complexity thresholds and model list) are loaded. |
 | **Postconditions** | POST-1. The subtask has run on the selected model. POST-2. A log entry is stored with the subtask, its complexity level, the model used, the response time, and the estimated cost. |
 | **Normal Flow** | **11.0 Route a Subtask** 1. The orchestrator passes the subtask to the complexity classifier. (see 11.0.E2) 2. The classifier rates the subtask as Low, Medium, or High, based on task type, input length, and the reasoning it needs. 3. The orchestrator selects a model: Low goes to the local model, Medium to a smaller cloud model, High to a stronger cloud model. 4. The orchestrator sends the subtask to the selected model. (see 11.1) 5. The model returns its result. (see 11.0.E1, 11.2) 6. The system stores the log entry. |
@@ -470,7 +474,7 @@ Table 3.13: Use Case Description for UC-13 (Manage Users & Monitor System)
 | **Normal Flow** | **13.0 Manage Users** 1. The Administrator opens the admin dashboard. 2. The system lists user accounts with their status. 3. The Administrator selects an account and chooses to deactivate or reactivate it. (see 13.0.E1) 4. The system saves the change and records it in the system log. |
 | **Alternative Flows** | **13.1 Monitor the system** 1. The Administrator opens the monitoring page. 2. The system shows the status of background jobs and recent errors. **13.2 Reset a User's password (optional, later feature; not part of version 1.0 because it needs an email service)** 1. The Administrator chooses to reset the password of an account. 2. The system sends the User a reset link. |
 | **Exceptions** | **13.0.E1 The Administrator tries to deactivate their own account** 1. The system blocks the action and informs the Administrator. |
-| **Business Rules** | BR-25. The Administrator shall not be able to read a User's memories, conversations, or documents. BR-26. Every administrator action shall be written to the system log. |
+| **Business Rules** | BR-25. The Administrator shall not be able to read a User's memories, conversations, documents, or knowledge graphs. BR-26. Every administrator action shall be written to the system log. |
 | **Assumptions** | 1. At least one administrator account exists from the start. |
 
 # Functional Requirements:
@@ -514,7 +518,7 @@ Table 4.3: Functional requirement FR-3
 | **Identifier** | **FR-3** |
 |---|---|
 | **Title** | Send Messages and Receive Streamed Replies |
-| **Requirement** | When a logged-in User submits a message, the system shall build a prompt from the message, the recent conversation, and the retrieved memories, send it to the selected model, and stream the reply to the User as it is generated. The system shall not send an empty message. If the selected model is unavailable, the system shall inform the User, keep the message, and offer a retry. |
+| **Requirement** | When a logged-in User submits a message, the system shall build a prompt from the message, the recent conversation, and the retrieved memories, send it to the selected model, and stream the reply to the User as it is generated. When the question uses the knowledge base, the system shall send the retrieval events of FR-28 in the same stream. The system shall not send an empty message. If the selected model is unavailable, the system shall inform the User, keep the message, and offer a retry. |
 | **Source** | UC-2; Project team |
 | **Rationale** | Streaming makes the assistant feel responsive, and the memory-based prompt is what lets it continue earlier work. |
 | **Business Rule** | BR-1: The system shall retrieve only the logged-in User’s own memories. |
@@ -649,9 +653,9 @@ Table 4.13: Functional requirement FR-13
 | **Dependencies** | FR-6, FR-11 |
 | **Priority** | Medium |
 
-## Knowledge Base and RAG:
+## Knowledge Base and GraphRAG:
 
-This feature lets Users upload documents and ask questions answered from them. It covers uploading and validating files, indexing them, managing the document list, and answering questions with references to the sources. It is derived from use cases UC-7 and UC-8.
+This feature lets Users upload documents and ask questions answered from them. It covers uploading and validating files, indexing them, building a knowledge graph from them, managing the document list, and answering questions with GraphRAG, with references to the sources and a live view of the graph. It is derived from use cases UC-7 and UC-8.
 
 Table 4.14: Functional requirement FR-14
 
@@ -670,7 +674,7 @@ Table 4.15: Functional requirement FR-15
 | **Identifier** | **FR-15** |
 |---|---|
 | **Title** | Document Processing and Indexing |
-| **Requirement** | After an upload is accepted, the system shall show the document with the status “Processing”, and a background job shall extract its text, split it into sections, create embeddings, and store them. The system shall then change the status to “Indexed”. If no text can be extracted, the system shall set the status to “Failed” and tell the User why. |
+| **Requirement** | After an upload is accepted, the system shall show the document with the status “Processing”, and a background job shall extract its text, split it into sections, create embeddings, and store them. The system shall then change the status to “Indexed”. If no text can be extracted, the system shall set the status to “Failed” and tell the User why. A document that is “Indexed” can already be searched by similarity; building its knowledge graph (FR-27) comes afterwards and does not change this status. |
 | **Source** | UC-7; Project team |
 | **Rationale** | Indexing makes the document searchable. Background processing keeps the interface responsive. |
 | **Business Rule** | None |
@@ -682,7 +686,7 @@ Table 4.16: Functional requirement FR-16
 | **Identifier** | **FR-16** |
 |---|---|
 | **Title** | Document Management |
-| **Requirement** | The User shall be able to view the list of uploaded documents with their status, delete a document together with its embeddings after confirmation, and re-index a document. |
+| **Requirement** | The User shall be able to view the list of uploaded documents with their status, delete a document together with its embeddings and the knowledge graph entries that no other document supports after confirmation, and re-index a document (which also rebuilds its knowledge graph entries). |
 | **Source** | UC-7; Project team |
 | **Rationale** | Users need to remove outdated documents and recover from failed indexing. |
 | **Business Rule** | BR-18: A document shall be searchable only by the User, or the project members, who own it. |
@@ -693,13 +697,37 @@ Table 4.17: Functional requirement FR-17
 
 | **Identifier** | **FR-17** |
 |---|---|
-| **Title** | Document-Based Question Answering with Sources |
-| **Requirement** | When the User asks a question and selects the knowledge base, the system shall find the most similar sections in the indexed documents the User may access, send them with the question to the selected model, and show the answer together with references to the documents and sections it used. If no relevant section is found, the system shall tell the User that the documents do not contain an answer. |
+| **Title** | Document-Based Question Answering with Sources (GraphRAG) |
+| **Requirement** | When the User asks a question and selects the knowledge base, the system shall (1) find the entities in the knowledge graphs the User may access that are most similar to the question, (2) follow the relationships from those entities to related entities, up to 2 steps away, (3) collect the sections that support the entities and relationships, and (4) send those sections and the relationships with the question to the selected model and show the answer together with references to the documents and sections it used. For a document whose graph is not yet ready, the system shall find its sections by similarity search instead. If no relevant section is found, the system shall tell the User that the documents do not contain an answer. These steps shall run as a graph of steps built with LangGraph (CO-2). |
 | **Source** | UC-8; Project team |
-| **Rationale** | Answers based on the User’s own documents, with sources, can be checked by the User. |
-| **Business Rule** | BR-19: Every document-based answer shall list the documents it used. BR-20: The system shall use only documents the User is allowed to access. |
-| **Dependencies** | FR-15, FR-21 |
+| **Rationale** | Answers based on the User’s own documents, with sources, can be checked by the User. Following relationships also finds answers that are spread over several documents. |
+| **Business Rule** | BR-19: Every document-based answer shall list the documents it used. BR-20: The system shall use only documents the User is allowed to access. BR-27 (see FR-27). |
+| **Dependencies** | FR-15, FR-21, FR-27 |
 | **Priority** | High |
+
+Table 4.17a: Functional requirement FR-27
+
+| **Identifier** | **FR-27** |
+|---|---|
+| **Title** | Knowledge Graph Extraction |
+| **Requirement** | After a document is “Indexed”, a background job shall extract entities and relationships from each of its sections with a language model, and store them with links to the sections they come from. Entities with the same name and type in the same knowledge base (personal or one project) shall be stored once and linked to every section that mentions them. Each extraction call shall go through the complexity classifier and the model router (FR-20, FR-21), using the cheapest tier that gives a valid result, and shall be written to the execution log with the model, response time, and estimated cost (FR-22). The system shall show the progress of the extraction for each document (Pending, Extracting, Ready, or Failed) and shall not stop the document from being searched while the extraction runs. If extraction fails for a section after the retries, the system shall keep the results of the other sections, show the reason, and let the User retry. |
+| **Source** | UC-7; Project team |
+| **Rationale** | The knowledge graph lets GraphRAG answer questions that need information from several sections or documents. Using the cheapest suitable model keeps the cost of building the graph low. |
+| **Business Rule** | BR-27: The entities, relationships, and graph events made from a document shall be stored, retrieved, and shown only to the User, or the project members, who own the document. BR-28: Every entity-extraction call shall be written to the execution log with its model, response time, and estimated cost. |
+| **Dependencies** | FR-15, FR-20, FR-21, FR-22 |
+| **Priority** | High |
+
+Table 4.17b: Functional requirement FR-28
+
+| **Identifier** | **FR-28** |
+|---|---|
+| **Title** | Live Knowledge Graph Panel |
+| **Requirement** | The chat screen shall have a side panel that shows the knowledge graph of the selected knowledge base (personal or a project). While an answer is being generated from the knowledge base, the system shall send an event to the browser as each retrieval step finishes (entities found, graph expanded, sections collected), over the same open connection as the streamed answer, and the panel shall highlight the entities and relationships found and reached by those steps. When the graph is empty or not ready, the panel shall say so. The User shall be able to select an entity to see its type, its description, and the documents it comes from. |
+| **Source** | UC-8; Project team |
+| **Rationale** | Showing what the system looked at lets the User understand and check how an answer was built. |
+| **Business Rule** | BR-27 (see FR-27) |
+| **Dependencies** | FR-3, FR-17, FR-27 |
+| **Priority** | Medium |
 
 ## Multi-Agent Collaboration and Model Routing:
 
@@ -710,7 +738,7 @@ Table 4.18: Functional requirement FR-18
 | **Identifier** | **FR-18** |
 |---|---|
 | **Title** | Multi-Agent Task Execution |
-| **Requirement** | When the User submits a complex request, the orchestrator shall pass it to a planning agent that divides it into subtasks, a research agent that collects information from the knowledge base and memories, a reviewer agent that checks the findings, and a response agent that writes the final answer. If the reviewer finds gaps, it shall send the findings back to the research agent, up to 2 times for one task. |
+| **Requirement** | When the User submits a complex request, the orchestrator shall pass it to a planning agent that divides it into subtasks, a research agent that collects information from the knowledge base (with the GraphRAG retrieval of FR-17) and memories, a reviewer agent that checks the findings, and a response agent that writes the final answer. If the reviewer finds gaps, it shall send the findings back to the research agent, up to 2 times for one task. |
 | **Source** | UC-9; Project team |
 | **Rationale** | Splitting a complex request among specialized agents improves quality on tasks that need planning, research, and checking. |
 | **Business Rule** | BR-5: The reviewer and research agents shall loop at most 2 times for one task. |
@@ -758,7 +786,7 @@ Table 4.22: Functional requirement FR-22
 | **Identifier** | **FR-22** |
 |---|---|
 | **Title** | Routing and Execution Logging |
-| **Requirement** | For every routed subtask and every agent step, the system shall store a log entry with the subtask, its complexity level, the model used, the response time, and the estimated cost. |
+| **Requirement** | For every routed subtask, every agent step, and every entity-extraction call (FR-27), the system shall store a log entry with the subtask, its complexity level, the model used, the response time, and the estimated cost. |
 | **Source** | UC-9, UC-11; Project team |
 | **Rationale** | The log is the data used to measure how much routing saves and to explain each routing decision. |
 | **Business Rule** | BR-6, BR-8: Every routing decision shall be logged. |
@@ -802,10 +830,10 @@ Table 4.25: Functional requirement FR-25
 | **Identifier** | **FR-25** |
 |---|---|
 | **Title** | User Account Management |
-| **Requirement** | The Administrator shall be able to view user accounts with their status, deactivate and reactivate an account, and, as an optional later feature, send a password reset link to a User. The system shall block an Administrator from deactivating their own account. The system shall not give the Administrator access to any User’s memories, conversations, or documents. |
+| **Requirement** | The Administrator shall be able to view user accounts with their status, deactivate and reactivate an account, and, as an optional later feature, send a password reset link to a User. The system shall block an Administrator from deactivating their own account. The system shall not give the Administrator access to any User’s memories, conversations, documents, or knowledge graphs. |
 | **Source** | UC-13; Project team |
 | **Rationale** | Account control is needed to run the system, and the privacy rule protects User data. |
-| **Business Rule** | BR-25: The Administrator shall not be able to read a User’s memories, conversations, or documents. BR-26: Every administrator action shall be written to the system log. |
+| **Business Rule** | BR-25: The Administrator shall not be able to read a User’s memories, conversations, documents, or knowledge graphs. BR-26: Every administrator action shall be written to the system log. |
 | **Dependencies** | FR-2 |
 | **Priority** | Medium |
 
@@ -843,6 +871,8 @@ Usability requirements cover how easy the system is to learn and use, how errors
 
 **USE-7:** The interface shall be usable in current desktop browsers at a screen size of 1366 × 768 pixels, and on tablets with a screen width of at least 768 pixels.
 
+**USE-8:** The knowledge graph panel shall stay readable at 1366 × 768 pixels: by default it shall show at most 150 entities (the most connected ones and those used in the current answer), a legend of the entity types, and the details of an entity when the User selects it.
+
 ## Performance:
 
 Performance requirements cover response time, processing time, and capacity. The response times for model replies assume that the model provider is available.
@@ -859,7 +889,7 @@ Performance requirements cover response time, processing time, and capacity. The
 
 **PER-6:** A background job shall recalculate the confidence scores of 10,000 memories within 1 minute.
 
-**PER-7:** A PDF document of up to 20 pages shall be processed and indexed within 2 minutes of upload.
+**PER-7:** A PDF document of up to 20 pages shall be processed and indexed (text extracted, split into sections, embedded, and stored) within 2 minutes of upload. Building its knowledge graph (FR-27) comes afterwards and has no fixed time limit, because it depends on the rate limits of the models.
 
 **PER-8:** A PDF report of up to 20 pages shall be generated within 10 seconds of the User’s request.
 
@@ -868,6 +898,10 @@ Performance requirements cover response time, processing time, and capacity. The
 **PER-10:** On the project’s evaluation set of test tasks, complexity-based routing shall lower the total estimated cost by at least 30% compared with sending every subtask to the strongest model, while the answer quality stays within 5% of the strongest-model results.
 
 **PER-11:** On the project’s evaluation set of contradicting and non-contradicting memory pairs, the conflict detector shall reach at least 85% precision and 80% recall.
+
+**PER-12:** For a User with up to 10,000 entities, finding the entities for a question and following the relationships to collect the supporting sections shall take no more than 1 second, before the model starts writing the answer.
+
+**PER-13:** Each retrieval event shall reach the browser within 1 second after the step that produced it has finished.
 
 # External Interface Requirements:
 
@@ -885,7 +919,7 @@ Figure 6.1: Mockup of the Register / Log In screen
 
 ### UI-2 (Chat):
 
-The chat screen shall have three areas: a list of conversations on the left, the conversation with a message box in the center, and a memory panel on the right. The memory panel shall show each memory with its confidence bar and status. Under each reply, the screen shall show how many memories were used and which model answered. When a reply relies on a memory that needs re-verification, the screen shall offer buttons to confirm it or update it. The mockup below shows the layout.
+The chat screen shall have three areas: a list of conversations on the left, the conversation with a message box in the center, and a side panel on the right with two tabs: Memories and Knowledge graph. The Memories tab shall show each memory with its confidence bar and status. The Knowledge graph tab shall show the knowledge graph of the selected knowledge base, and while an answer from the knowledge base is being written, it shall highlight the entities and relationships that are used (FR-28). Under each reply, the screen shall show how many memories were used and which model answered. When a reply relies on a memory that needs re-verification, the screen shall offer buttons to confirm it or update it. The mockup below shows the layout.
 
 Figure 6.2: Mockup of the chat screen with memory panel
 
@@ -897,7 +931,7 @@ Figure 6.3: Mockup of the memory conflict resolution screen
 
 ### UI-4 (Project Workspace and Knowledge Base):
 
-The project screen shall have a list of projects on the left, a task board with the columns To Do, In Progress, and Done, and a knowledge base area below it. The knowledge base area shall show the uploaded documents with their status, an upload button, and a box to ask a question about the documents. Answers shall show the source of the information. The mockup below shows the layout.
+The project screen shall have a list of projects on the left, a task board with the columns To Do, In Progress, and Done, and a knowledge base area below it. The knowledge base area shall show the uploaded documents with their status and graph status, an upload button, a button to open the knowledge graph panel, and a box to ask a question about the documents. Answers shall show the source of the information and how many entities and relationships were used. The mockup below shows the layout.
 
 Figure 6.4: Mockup of the project workspace with task board and knowledge base
 
@@ -919,21 +953,23 @@ All screens shall use the same navigation bar, buttons, and colors. Every action
 
 ## Software Interfaces:
 
-**SI-1 (Frontend to backend):** The Next.js frontend shall communicate with the FastAPI backend through a REST API using JSON. Streamed chat replies shall be sent to the frontend as they are generated.
+**SI-1 (Frontend to backend):** The Next.js frontend shall communicate with the FastAPI backend through a REST API using JSON. Streamed chat replies shall be sent to the frontend as they are generated. For questions answered from the knowledge base, the retrieval events of FR-28 shall be sent in the same stream, using Server-Sent Events over a POST request.
 
-**SI-2 (Backend to database):** The backend shall store structured data, memories, version histories, logs, and embeddings in PostgreSQL 15 or later with the pgvector extension, and shall search embeddings by vector similarity.
+**SI-2 (Backend to database):** The backend shall store structured data, memories, version histories, logs, embeddings, and the knowledge graph (entities and relationships) in PostgreSQL 15 or later with the pgvector extension, and shall search embeddings by vector similarity.
 
-**SI-3 (Backend to Redis and background worker):** The backend shall send background jobs to a Celery worker through Redis. The jobs are conversation summarization, memory confidence updates, and document indexing.
+**SI-3 (Backend to Redis and background worker):** The backend shall send background jobs to a Celery worker through Redis. The jobs are conversation summarization, memory confidence updates, document indexing, and knowledge graph extraction.
 
 **SI-4 (Backend to cloud language models):** The backend shall send prompts to cloud language model providers through their web APIs and receive the replies. The API keys shall be stored in server configuration and shall never be sent to the browser.
 
 **SI-5 (Backend to local model):** The backend shall send prompts to a local model through a local runtime that exposes an HTTP interface on the same machine or the same local network.
 
-**SI-6 (Embeddings):** The system shall use an embedding model to convert documents, memories, and questions into vectors. The same embedding model shall be used for storing and searching.
+**SI-6 (Embeddings):** The system shall use an embedding model to convert documents, memories, entities, and questions into vectors. The same embedding model shall be used for storing and searching.
 
 **SI-7 (PDF service):** The backend shall send validated report data to a separate Node.js service that creates the PDF with a PDF-generation library and returns the file.
 
 **SI-8 (File storage):** The system shall store uploaded documents on the local disk of the server and shall keep only the file path and details in the database.
+
+**SI-9 (Graph extraction):** The backend shall extract entities and relationships from document sections with a LangChain graph transformer that calls the language model chosen by the router. The structured result shall be checked before it is stored.
 
 ## Hardware Interfaces:
 
@@ -953,7 +989,7 @@ Synoras AI does not use any special hardware devices. The hardware needs are:
 
 **CI-3:** The backend, database, Redis, PDF service, and local model runtime shall communicate over a private network or the same machine, and the database and Redis shall not be reachable from the internet.
 
-**CI-4:** Streamed replies shall use a connection that keeps open while the reply is generated. If the connection drops, the system shall keep the message and let the User retry.
+**CI-4:** Streamed replies shall use a connection that keeps open while the reply is generated. If the connection drops, the system shall keep the message and let the User retry. The same connection carries the retrieval events of FR-28.
 
 **CI-5:** The system shall need an internet connection for cloud models. Chat requests rated Low complexity can still be answered by the local model without one.
 
@@ -965,7 +1001,7 @@ The project will be completed in about eight months, from October 2026 to May 20
 
 Planning and Design (October to early November 2026): requirements analysis, literature review, system architecture, and UI/UX design. This phase produces the SRS, the system design, and the interface mockups.
 
-Core Development (November 2026 to January 2027): the AI chat workspace, persistent memory, project workspaces, the knowledge base with RAG, and the memory confidence decay and conflict resolution mechanism. The basic memory is built first, and the decay and conflict mechanism is added on top of it.
+Core Development (November 2026 to January 2027): the AI chat workspace, persistent memory, project workspaces, the knowledge base with GraphRAG (in four phases: chunks and embeddings, entity extraction, graph retrieval, and the live graph panel), and the memory confidence decay and conflict resolution mechanism. The basic memory is built first, and the decay and conflict mechanism is added on top of it.
 
 Advanced Features (January to March 2027): multi-agent collaboration, complexity-aware model routing, and PDF report generation. The router starts after the multi-agent pipeline is running, because it assigns models to the agents’ subtasks.
 

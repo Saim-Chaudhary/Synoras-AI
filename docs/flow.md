@@ -26,7 +26,7 @@ How a memory lives:
 - If new information contradicts it, a **conflict** is saved as pending, the user chooses, and the old text goes to the version history (**Past**).
 - Deleting a memory removes it completely.
 
-Main database tables: `users`, `projects`, `project_notes`, `tasks`, `chats`, `messages`, `memories`, `memory_versions`, `memory_conflicts`, `message_memories`, `documents`, `document_chunks`, `subtasks`, `agent_steps`, `reports`, `system_log` (see SDD Section 5.2).
+Main database tables: `users`, `projects`, `project_notes`, `tasks`, `chats`, `messages`, `memories`, `memory_versions`, `memory_conflicts`, `message_memories`, `documents`, `document_chunks`, `graph_entities`, `graph_relations`, `graph_entity_chunks`, `graph_relation_chunks`, `graph_extraction_log`, `subtasks`, `agent_steps`, `reports`, `system_log` (see SDD Section 5.2).
 
 Typical trip of one chat message:
 1. You type a message in the browser.
@@ -143,8 +143,37 @@ Not built yet.
 ## Memory
 Not built yet.
 
-## Documents and RAG
-Not built yet.
+## Documents and GraphRAG
+Not built yet. This is the planned flow after the spec change of 2026-11-18 (decisions A19). **File names are proposals; the open questions G1 to G14 in `spec-changes.md` are not answered yet.** In short: the document is chunked and embedded (phase 1), a second job turns the chunks into a knowledge graph (phase 2), questions are answered by walking that graph (phase 3), and the chat screen shows the walk live (phase 4).
+
+**Upload and index a document (phase 5.1, FR-14, FR-15)**
+- **User does:** picks a PDF, TXT or Markdown file (max 20 MB) in the personal knowledge base or in a project.
+- **Files, in order (planned):**
+  1. `backend/app/api/documents.py`: checks type and size, saves the file on disk, creates the `documents` row with status Processing, queues the job.
+  2. `backend/app/workers/documents.py`: the Celery job `processDocument`.
+  3. `backend/app/rag/chunking.py`: reads the text (pypdf for PDF), splits it into chunks, keeps the page number.
+  4. The embedding model turns each chunk into a vector and the chunk is saved in `document_chunks`.
+- **Result:** the document is Indexed and can be searched by similarity. Its graph status is Pending.
+
+**Build the knowledge graph (phase 5.2, FR-27)**
+- **User does:** nothing. It starts by itself after Indexed, and the document list shows "Graph: Extracting, 12 of 40 sections".
+- **Files, in order (planned):**
+  1. `backend/app/workers/documents.py`: the Celery job `extractGraph` takes the chunks that have no `extracted_at` yet, one by one.
+  2. `backend/app/routing/classifier.py` and `router.py`: rate the chunk and pick the cheapest suitable model (same rules as chat).
+  3. `backend/app/rag/extraction.py`: asks the model for entities and relationships (LangChain graph transformer), checks the result, retries twice.
+  4. `backend/app/rag/graph_store.py`: finds or creates each entity (same name and type in the same knowledge base), links it to the chunk, saves the relationships.
+  5. `graph_extraction_log`: one row per call with model, time and estimated cost.
+- **Result:** the document's graph status becomes Ready. If a limit is hit, the job pauses, and a retry continues with the chunks that are not done.
+
+**Ask a question and watch the graph (phases 5.3 and 5.4, FR-17, FR-28)**
+- **User does:** in the chat, chooses the knowledge base to ask and sends a question, with the Knowledge graph tab open.
+- **Files, in order (planned):**
+  1. `frontend/src/lib/stream.ts`: sends the POST request with the login token and reads the Server-Sent Events stream.
+  2. `backend/app/api/chat.py`: starts the GraphRAG run and streams its events and the answer text.
+  3. `backend/app/rag/graph_retrieval.py`: the LangGraph graph of steps: embed, entities found (vector search in `graph_entities`), graph expanded (2 steps through `graph_relations`), chunks collected, answer. Each step sends an event. Documents whose graph is not ready are searched by similarity.
+  4. `backend/app/routing/router.py`: picks the model that writes the answer.
+  5. `frontend/src/components/graph-panel.tsx`: draws the graph (loaded from the graph endpoint) and highlights the entities and relationships named in the events.
+- **Result:** the answer streams in with its sources, while the used entities and relationships light up in the panel.
 
 ## Projects and tasks
 Not built yet.
