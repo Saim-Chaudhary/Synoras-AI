@@ -131,8 +131,8 @@ Status is one of: `Proposed` (waiting for your approval), `Approved`, `Resolved`
 - **Reason:** JWT needs no database or Redis lookup to check a token, and the rest follows the spec so you can explain it in the defense.
 
 ### A17. A thin sample UI beside each backend feature
-- **Status:** Approved (by you). This replaces the "backend first, no frontend screens" part of A7.
-- **Decision:** From now on, every backend feature gets a thin **sample UI** in `frontend/`, built beside it. It is simple and unpolished, and follows the mockups only roughly. Rules for every page: **Tailwind only, no extra UI libraries, no animations.** The final design polish (colours, fonts, layout, the real look of the mockups) is done at the end of the project. The backend is still tested through `/docs` and automatic tests as before.
+- **Status:** Approved (by you). This replaces the "backend first, no frontend screens" part of A7. Updated in A20: Cytoscape.js is allowed for the knowledge graph panel.
+- **Decision:** From now on, every backend feature gets a thin **sample UI** in `frontend/`, built beside it. It is simple and unpolished, and follows the mockups only roughly. Rules for every page: **Tailwind only, no extra UI libraries except Cytoscape.js (for the knowledge graph panel only), no animations.** The final design polish (colours, fonts, layout, the real look of the mockups) is done at the end of the project. The backend is still tested through `/docs` and automatic tests as before.
 - **Alternatives:** Keep all UI for the end (A7); build the polished UI feature by feature.
 - **Reason:** A small page next to each feature shows that the feature really works from a browser (CORS, tokens, error messages), and it spreads the UI work over the whole project instead of leaving it all for the end. Keeping pages plain keeps them cheap to build and easy to explain.
 
@@ -154,7 +154,7 @@ Status is one of: `Proposed` (waiting for your approval), `Approved`, `Resolved`
 ---
 
 ### A19. The Knowledge Base module uses GraphRAG instead of simple RAG
-- **Status:** The change itself is **Approved** (by you, 2026-11-18) and is written into the Scope, SRS and SDD (every edit is listed in `spec-changes.md`). The design details below are **my proposals**: they are written into the specs so you can read them, but they stay **Proposed** until you answer the open questions G1 to G14 (bottom of `spec-changes.md`). Nothing is built yet.
+- **Status:** The change itself is **Approved** (by you, 2026-11-18) and is written into the Scope, SRS and SDD (every edit is listed in `spec-changes.md`). The design details below are **my proposals**: they are written into the specs so you can read them, but they stay **Proposed** until you answer the open questions G1 to G14 (bottom of `spec-changes.md`). They were answered on 2026-11-18: see A20. Nothing is built yet.
 - **Decision (what changed):**
   1. **Chunks and embeddings stay as before** (pgvector). When that is done the document is `Indexed` and can already be searched by similarity. PER-7 (2 minutes) now covers only this part.
   2. **A second background job extracts entities and relationships** from each chunk with the LangChain graph transformer and stores them in PostgreSQL. **No separate graph database** (CO-3).
@@ -172,6 +172,30 @@ Status is one of: `Proposed` (waiting for your approval), `Approved`, `Resolved`
 - **Reason:** GraphRAG can answer questions that need facts from several chunks or documents joined through the entities they share, and the live panel shows the user what the answer was built from, which fits the project's focus on transparency. Keeping the graph in PostgreSQL keeps one database and one set of backups, privacy rules and migrations.
 - **Open questions (nothing here is decided):** G1 PER-7 and extraction time; G2 free-tier limits; G3 rating extraction tasks and the undefined "quality check" (and an exception to BR-7); G4 where extraction is logged and FR-23; G5 embedding model and vector size; G6 new dependencies; G7 graph drawing library vs rule A17; G8 streaming format; G9 entity merging; G10 how far GraphRAG goes and its numbers; G11 re-index cost; G12 privacy of document text sent to cloud models; G13 sources are not stored; G14 bookkeeping and proposed numbers.
 - **Build plan:** four phases (see `progress.md`): chunks and embeddings, entity extraction, graph retrieval, live graph panel. The last two need the Chat step (streaming) first.
+
+---
+
+### A20. Answers to the open questions (GraphRAG G1 to G14, and inconsistencies 1 to 7)
+- **Status:** Approved (by you, 2026-11-18). You said to use Claude's proposed answer for everything you did not decide yourself. The specs and `spec-changes.md` are **not** edited again (your instruction), so where this entry differs from the spec text, **this entry wins** until you ask for the specs to be updated.
+- **Your decisions:**
+  - **G1:** accepted. PER-7 covers only indexing. Graph extraction runs in the background with no time limit.
+  - **G3, the "quality check":** an answer passes when it is non-empty, valid in the expected format, and not a refusal. If it fails, the subtask is retried on the stronger tier. This is the meaning of "quality check" everywhere (FR-21, UC-11 flow 11.2, algorithms 6.2 and 6.8). "Expected format" only matters where a format is expected (for example the structured result of graph extraction); plain chat text only has to be non-empty and not a refusal. *(This is Claude's reading of your sentence.)*
+  - **G5:** embeddings come from a **local model run by Ollama**, the same one for chunks, memories and entities (SI-6). Claude picks the exact model and vector size with Context7 when phase 5.1 is built. **This needs Ollama installed first.**
+  - **G6:** approved. `langchain-experimental` and `langchain-community` are added when the graph phase (5.2) is built, not before.
+  - **G7:** approved. **Rule A17 is now: "Tailwind only, no extra UI libraries except Cytoscape.js (for the knowledge graph panel only), no animations."** The highlight is an instant color change, and the layout runs without animation.
+  - **G12:** accepted for a university project. Only your own test documents go to cloud models.
+- **Taken from Claude's proposals:**
+  - **G2:** extraction starts by itself after Indexed, is resumable, and pauses on a rate limit (HTTP 429).
+  - **G3 (second part):** for extraction only, a chunk the classifier is unsure about is treated as Medium, not High. This is an exception to BR-7.
+  - **G4:** a new table `graph_extraction_log`. FR-23 (routing log screen) stays as it is.
+  - **G8:** Server-Sent Events over a POST request.
+  - **G9:** entities are merged only when name and type are the same inside one knowledge base.
+  - **G10:** entity-centred GraphRAG only. Starting values: 5 entities, 2 steps, 50 entities, 20 chunks, 150 nodes in the panel.
+  - **G11:** a re-index extracts again, and "retry graph" continues with the chunks that are not done.
+  - **G13:** link tables store the sources of each reply (chunks, entities, relationships). Their design comes when the Knowledge Base step is built.
+  - **G14:** new IDs were appended, and the proposed numbers in PER-12, PER-13 and USE-8 stand.
+  - **Inconsistencies 1 to 7:** all approved with the fix proposed in `spec-changes.md`. (1) "Keep both" marks the old memory `past`. (2) `reports` gets `file_path`. (3) `documents` gets `status_message`. (4) Versions in the Scope table say "latest stable". (5) A simple chat message gets one classifier rating and one model call; the full multi-agent pipeline runs only when asked, or when the rating is High and the request needs several steps. (6) Conflicts are checked after the conversation only, at first. (7) The user writes project summaries in version 1.0.
+- **Not changed on purpose:** `CLAUDE.md` still has the old wording of rule A17 and of the "do not add packages or pick libraries before the user answers" warning. You asked to keep documentation work minimal, so only `progress.md` and `decisions.md` were updated. Ask for `CLAUDE.md` to be updated when you want.
 
 ---
 
@@ -251,12 +275,12 @@ All of B1 to B9 are **Resolved**: you approved them and they are applied to the 
 
 ## Part C: Decisions to make later
 - ~~Which cloud models to use for "smaller" and "stronger"~~ decided in A10 (free models).
-- Which local model to run in Ollama (when you install it), and which embedding model and vector size to use (needed for chunks, memories and now graph entities: open question G5).
-- GraphRAG: the answers to the open questions G1 to G14 in `spec-changes.md` (A19), above all G5 (embedding model), G6 (extra Python packages), G7 (graph drawing library, an exception to A17) and G12 (privacy of document text sent to cloud models).
+- Which local model to run in Ollama (when you install it), and which embedding model and vector size to use (decided in A20: a local embedding model through Ollama; the exact model and size are chosen when phase 5.1 is built).
+- ~~GraphRAG open questions G1 to G14~~ answered in A20.
 - Whether to keep a fallback when OpenRouter's free daily limit (50 requests) is reached, for example Groq `gpt-oss-120b`.
 - How to turn a conversation into memories (the prompt we give the model).
 - Admin features (FR-25, FR-26) are now the last step in the build order.
 - Optional later: password reset.
 
 ## Part D: Open inconsistencies waiting for your approval
-Seven more small inconsistencies are listed at the bottom of `docs/spec-changes.md` ("Open inconsistencies"), and fourteen open questions about GraphRAG (G1 to G14, decisions A19) follow them. **None of them is fixed.** Examples: what "keep both" does to the old memory, a missing `file_path` on `reports`, and whether normal chat messages go through the router.
+Seven more small inconsistencies are listed at the bottom of `docs/spec-changes.md` ("Open inconsistencies"), and fourteen open questions about GraphRAG (G1 to G14, decisions A19) follow them. All of them were answered in A20. **None of them is fixed.** Examples: what "keep both" does to the old memory, a missing `file_path` on `reports`, and whether normal chat messages go through the router.
