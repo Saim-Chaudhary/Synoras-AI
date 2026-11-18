@@ -199,6 +199,32 @@ Status is one of: `Proposed` (waiting for your approval), `Approved`, `Resolved`
 
 ---
 
+### A21. The UI follows a "Claude-web-style" experience (inspiration only)
+- **Status:** Approved (by you, 2026-11-18)
+- **Decision:** The layout and interaction patterns of the app are inspired by Claude's web app. **Only the layout and the patterns are borrowed, not its branding, colors or logo.** Synoras keeps its own name and logo (navy `#14213D`, amber `#E9A23B`). The pattern to build towards:
+  1. **Left sidebar:** New chat button, search, chat history grouped by date, Projects and Memory sections, collapsible.
+  2. **Centered chat column** with a large rounded input at the bottom, streaming replies, markdown and code rendering with copy buttons, Stop generating, Regenerate, and editing a previous message.
+  3. **Right-hand side panel** that opens beside the chat (like Claude's artifacts panel). It will hold the live knowledge graph (A19), memory conflicts and source references.
+  4. **Light and dark themes** with a calm, warm-neutral palette, navy and amber from the logo as accents, generous spacing and clear typography.
+  5. **A greeting on an empty chat**, and good empty, loading and error states.
+- **Built now:** only the app shell (sidebar, empty chat screen, side panel placeholder, theme toggle) as static, thin pages. The real chat plugs into it in the chat sprint (step 3 in `progress.md`).
+- **Color rule (yours):** the brand colors are defined as theme variables **in one place**, `frontend/src/app/globals.css`. **Components never hard-code a color value** (no hex codes, no Tailwind palette colors like `bg-gray-100`). They use the meaning-based names defined there (`bg-surface`, `text-ink`, `border-line`, `bg-accent`, ...). A search of `frontend/src` for hex codes and palette classes finds nothing outside `globals.css`.
+- **Rule A17 still applies:** Tailwind only, no extra UI libraries except Cytoscape.js, no animations.
+- **Open for the chat sprint:** markdown rendering and code blocks with copy buttons normally need a library (for example `react-markdown`), and A17 forbids extra UI libraries. This needs your decision when we reach the chat step.
+
+### A22. How the app shell is built
+- **Status:** Approved (you asked for this; the choices below are mine)
+- **Brand and font:** the five logo files are in `frontend/public/`. The login and register pages use the full logo; the sidebar, the empty chat and the side panel use the mark. Each logo has a light-background and a dark-background file, and the page shows the one that fits the theme. `icon.svg` is the favicon (set in `layout.tsx`) and the app icon (`manifest.json`); the starter's `favicon.ico` was removed. **Inter** comes from `next/font` (downloaded at build time and served from our own site). Two limits of the logo files: the word "Synoras" in `logo-full.svg` is SVG text, and an image cannot use the page's Inter, so it falls back to a system font (fix: turn the text into outlines in the file); and iOS home-screen icons need a PNG, which does not exist yet.
+- **Theme:** `data-theme="light"` or `"dark"` on `<html>`. A small script runs before the first paint so there is no flash; the choice is saved in `localStorage` (`synoras_theme`); with no saved choice it follows the computer's setting. Light uses navy as the accent; dark uses amber (navy is too dark on a dark background). Components need no `dark:` classes, because only the variables change. The only `dark:` is for choosing between the two logo files.
+- **Pages:** `/chat` is the empty chat. It lives in the route group `src/app/(app)/`, whose layout holds the login guard (`useRequireAuth`), the loading and error screen and the shell, so every later page put in `(app)` gets the shell. `/` and `/dashboard` redirect to `/chat`, and login and register now go to `/chat`. The old dashboard page (name, email, Log out) is gone: the name and email are at the bottom of the sidebar.
+- **Behaviour:** the sidebar is 288 px wide, or a 56 px icon strip when collapsed (the choice is remembered, `synoras_sidebar_collapsed`). The side panel starts closed; from 1280 px wide it sits beside the chat, and on narrower screens it covers the right edge. No animations, and no icon library (the icons are small inline SVGs).
+- **Still static:** the search box, the chat history (empty, so it shows an empty state), the Projects and Memory sections (empty text), and the message box (Send is disabled, with a preview note).
+- **Checked:** lint, TypeScript and `npm run build` pass. In a real browser: login and register pages in both themes, the shell at 1366 × 768 (panel docked), 1024 and 768 wide (no sideways scroll), sidebar collapse, side panel, theme toggle, theme and sidebar choice kept after a reload, the error screen with the backend stopped, and Log out.
+- **Docs checked:** the Next.js docs in `node_modules` (fonts, icons, manifest, preventing a flash before hydration) and Context7 for Next.js, Tailwind (dark variant, `@theme inline`) and React (context, `useSyncExternalStore`).
+- **Not updated:** `CLAUDE.md` still has the old frontend rules (the old A17 wording, no mention of the color rule). Ask for it to be updated when you want.
+
+---
+
 ## Part B: Problems found in the documents
 
 All of B1 to B9 are **Resolved**: you approved them and they are applied to the specs. The exact places are listed below. The full change list with one-line reasons is in `docs/spec-changes.md`.

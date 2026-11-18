@@ -1,0 +1,15 @@
+{
+  "name": "Synoras AI",
+  "short_name": "Synoras",
+  "description": "An AI assistant that remembers, with project workspaces and your own documents.",
+  "start_url": "/chat",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

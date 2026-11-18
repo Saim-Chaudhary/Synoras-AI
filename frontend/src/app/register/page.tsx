@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import AuthCard from "@/components/auth-card";
+import { buttonClass } from "@/components/button";
 import TextField from "@/components/text-field";
 import { ApiError } from "@/lib/api";
 import { getToken, register } from "@/lib/auth";
@@ -23,7 +24,7 @@ export default function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (getToken()) router.replace("/dashboard");
+    if (getToken()) router.replace("/chat");
   }, [router]);
 
   // Show a server problem next to the input it belongs to (SDD table 8.2.1).
@@ -67,7 +68,7 @@ export default function RegisterPage() {
     setSubmitting(true);
     try {
       await register(name.trim(), email.trim(), password); // also logs you in
-      router.replace("/dashboard");
+      router.replace("/chat");
     } catch (error) {
       setFieldErrors({});
       showServerError(error);
@@ -107,30 +108,26 @@ export default function RegisterPage() {
         />
 
         {formError && (
-          <p role="alert" className="mt-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p
+            role="alert"
+            className="mt-4 rounded-lg border border-danger-line bg-danger-soft px-3 py-2 text-sm text-danger"
+          >
             {formError}
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-6 w-full cursor-pointer rounded-md bg-gray-700 px-4 py-3 font-bold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
-        >
+        <button type="submit" disabled={submitting} className={buttonClass("primary", "mt-6 w-full")}>
           {submitting ? "Creating account..." : "Create account"}
         </button>
       </form>
 
-      <div className="my-5 flex items-center gap-3 text-sm text-gray-500">
-        <div className="h-px flex-1 bg-gray-300" />
+      <div className="my-5 flex items-center gap-3 text-sm text-ink-faint">
+        <div className="h-px flex-1 bg-line" />
         or
-        <div className="h-px flex-1 bg-gray-300" />
+        <div className="h-px flex-1 bg-line" />
       </div>
 
-      <Link
-        href="/login"
-        className="block w-full rounded-md border border-gray-600 bg-white px-4 py-3 text-center font-bold text-gray-800 hover:bg-gray-50"
-      >
+      <Link href="/login" className={buttonClass("secondary", "w-full")}>
         I already have an account
       </Link>
     </AuthCard>

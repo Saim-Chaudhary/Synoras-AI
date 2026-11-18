@@ -42,8 +42,10 @@ Typical trip of one chat message:
 Synoras_AI/
   frontend/        the website the user sees (Next.js, TypeScript, Tailwind)
     src/app/       pages and layouts (App Router): each folder here becomes a web address
-    src/components/  small pieces several pages share (auth-card, text-field)
-    src/lib/       helpers: api.ts (calls the backend), auth.ts (keeps the token), use-require-auth.ts (the login guard)
+    src/app/globals.css  the ONLY place with color values: brand colors, light and dark palettes and the class names (bg-surface, text-ink, ...)
+    src/app/(app)/  pages that need a login and are shown inside the app shell ("(app)" is only a grouping folder, not part of the address)
+    src/components/  pieces several pages share (logo, button, icons, auth-card, text-field, status-screen), app-shell/ (sidebar, top bar, side panel), chat/ (empty-chat, composer)
+    src/lib/       helpers: api.ts (calls the backend), auth.ts (keeps the token), use-require-auth.ts (the login guard), theme.ts (light/dark), use-persisted.ts (remembered settings)
   backend/         the server brain (FastAPI, Python)
     app/
       api/         the URLs the website can call (one file per feature)
@@ -101,15 +103,30 @@ Backend skeleton is built. For now we build the backend only and test it through
 **Register, log in and log out in the browser (sample UI)**
 - **User does:** opens `http://localhost:3000` (both servers must run), fills in the register or login form, later clicks Log out.
 - **Files, in order:**
-  1. `frontend/src/app/page.tsx`: `/` only redirects to `/dashboard`.
-  2. `frontend/src/lib/use-require-auth.ts`: the login guard used by `/dashboard`. No token, or `GET /auth/me` answers 401, sends the visitor to `/login`. It also gives the page the user and a `logout` function.
-  3. `frontend/src/app/login/page.tsx` and `register/page.tsx`: the forms. They check the input in the browser first (empty fields, email format, 8+ characters), call `auth.ts`, and turn each failure into a message next to the field or above the button. A visitor who already has a token is sent to `/dashboard`.
+  1. `frontend/src/app/page.tsx`: `/` only redirects to `/chat` (`/dashboard` redirects there too).
+  2. `frontend/src/lib/use-require-auth.ts`: the login guard used by the `(app)` layout. No token, or `GET /auth/me` answers 401, sends the visitor to `/login`. It also gives the page the user and a `logout` function.
+  3. `frontend/src/app/login/page.tsx` and `register/page.tsx`: the forms. They check the input in the browser first (empty fields, email format, 8+ characters), call `auth.ts`, and turn each failure into a message next to the field or above the button. A visitor who already has a token is sent to `/chat`. The card shows the full logo.
   4. `frontend/src/lib/auth.ts`: `login()` and `register()` call the backend and keep the token in the browser's `localStorage`; `authFetch()` adds `Authorization: Bearer <token>` to a request and throws away a token the backend refuses; `logout()` deletes the token.
   5. `frontend/src/lib/api.ts`: `apiFetch()` sends the request to `NEXT_PUBLIC_API_URL`, and turns every backend error into one `ApiError` (status, message, per-field messages). "Server not running" becomes status 0.
   6. `backend/app/main.py` (CORS): lets the page at `FRONTEND_ORIGIN` call the API from the browser.
-  7. `frontend/src/app/dashboard/page.tsx`: shows the name and email and the Log out button.
-- **Result:** after registering or logging in you land on the dashboard; a refresh keeps you logged in; Log out deletes the token and returns to `/login`.
+  7. `frontend/src/app/(app)/layout.tsx` and the app shell: show the name and email and the Log out button in the sidebar.
+- **Result:** after registering or logging in you land on `/chat`; a refresh keeps you logged in; Log out deletes the token and returns to `/login`.
 - **To protect a new page:** make it a client component and start it with `const { user, errorMessage, logout } = useRequireAuth();`. To call a protected endpoint, use `authFetch("/path")` from `lib/auth.ts`.
+
+**The app shell: the frame around every page after login (sample UI, decisions A21 and A22)**
+- **User does:** logs in and lands on `/chat`; collapses the sidebar, opens the side panel, switches between the light and dark theme.
+- **Files, in order:**
+  1. `frontend/src/app/layout.tsx`: the root page. Loads Inter, runs the theme script before the first paint, and sets the favicon.
+  2. `frontend/src/app/globals.css`: **the only place with color values.** The brand colors, the light and dark palettes, and the class names components use (`bg-surface`, `text-ink`, `border-line`, `bg-accent`, ...). To change a color, change it here.
+  3. `frontend/src/app/(app)/layout.tsx`: the login guard (`useRequireAuth`), the loading and error screen (`components/status-screen.tsx`), and the shell. Every page inside `(app)` gets the shell.
+  4. `components/app-shell/shell-context.tsx`: the state the parts share: the user, whether the sidebar is collapsed (remembered) and whether the side panel is open.
+  5. `components/app-shell/app-shell.tsx`: puts together sidebar, top bar with the page, and side panel.
+  6. `components/app-shell/sidebar.tsx` and `chat-history.tsx`: logo mark, New chat, search, chat history grouped by date, Projects and Memory sections, the user and Log out; an icon strip when collapsed.
+  7. `components/app-shell/topbar.tsx` with `theme-toggle.tsx` (uses `lib/theme.ts`) and `side-panel.tsx`: the theme and panel buttons, and the placeholder panel.
+  8. `frontend/src/app/(app)/chat/page.tsx` with `components/chat/empty-chat.tsx` (greeting) and `composer.tsx` (the message box; Send is disabled until the chat feature exists).
+  9. `components/logo.tsx` (shows the light or dark logo file), `button.tsx`, `icon-button.tsx`, `icons.tsx`: the shared pieces.
+- **Result:** a calm Claude-style screen: sidebar on the left, a greeting and a large rounded message box in the middle, and an optional panel on the right. The theme and the sidebar choice are remembered.
+- **To add a page to the shell:** create `src/app/(app)/<name>/page.tsx`. **To use a color:** use a name from `globals.css` (never a hex code or a Tailwind palette color); add a new name there if you need one.
 
 **Register (backend, tested on `/docs`)**
 - **User does:** sends name, email and password to `POST /auth/register` (on `/docs`: open it, click Try it out).

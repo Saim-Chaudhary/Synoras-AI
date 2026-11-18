@@ -28,12 +28,15 @@ Rules now in force (see `decisions.md` A6 to A9):
   - [x] **Sample UI:** `/register`, `/login`, `/dashboard` (name, email, Log out); API helper with the backend address from `NEXT_PUBLIC_API_URL`; auth helper that stores the token and attaches it; redirect to `/login` without a valid token (`frontend/`)
   - [x] CORS in the backend (only `FRONTEND_ORIGIN`, default `http://localhost:3000`); 5 tests
   - [x] Clear messages for wrong password, locked account, duplicate email, short password, backend not running; checked by hand in a real browser; `npm run lint`, type check and `npm run build` pass
+  - [x] **App shell** (decisions A21, A22): logo files, Inter, favicon and app icon, light and dark themes with all colors defined once in `globals.css`, collapsible sidebar, empty chat screen with greeting and message box, side panel placeholder, theme toggle; static pages. `/dashboard` is replaced by `/chat`. Checked at 1366 × 768, 1024 and 768 wide
   - [ ] Log out: there is no server endpoint. The browser just throws the token away, and it expires after 60 minutes. Waiting for your decision (decisions A16)
   - [ ] Protect or remove the temporary `/dev` endpoints: still open and unprotected. Waiting for your decision (decisions A13, A16)
   - [ ] How the first administrator account is created: not built; it belongs to the Admin step (for now set `role` in the database by hand)
 - [ ] **3. Chat** (FR-3, FR-4)
-  - [ ] Send a message and get a streamed reply
-  - [ ] Conversation history: new, reopen, search, delete
+  - [ ] Send a message and get a streamed reply (the message box and the empty chat already exist in the app shell; the Send button is disabled until this step)
+  - [ ] Conversation history: new, reopen, search, delete (fills the sidebar list, grouped by date)
+  - [ ] Chat screen behaviours from the UI direction (A21): markdown and code rendering with copy buttons (**needs your decision: a markdown library breaks rule A17**), Stop generating, Regenerate, editing a previous message
+  - [ ] Use the side panel for sources (and later the live knowledge graph and memory conflicts)
 - [ ] **4. Memory** (FR-5 to FR-8)
   - [ ] Summarize finished chats and extract memories (background job)
   - [ ] Retrieve the top 5 relevant memories for a reply (and record them in `message_memories`)

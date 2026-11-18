@@ -1,7 +1,131 @@
 @import "tailwindcss";
 
-/* One plain light look for now. Colours and fonts are polished at the end of the project. */
-body {
-  background: #f3f4f6;
-  color: #111827;
+/* =============================================================================
+   THE ONLY PLACE WHERE COLOR VALUES ARE WRITTEN.
+   Components never use a hex code or a Tailwind palette color (no bg-gray-100,
+   text-red-700, ...). They use the meaning-based names defined below
+   (bg-surface, text-ink, border-line, bg-accent, ...), so changing a color or a
+   whole theme means editing this file only (decisions A21).
+   ============================================================================= */
+
+/* "dark:" utilities (only used for the two logo variants) follow the data-theme
+   attribute that the theme script sets on <html> before the first paint. */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/* 1. Brand colors, taken from the logo. Defined once, here. */
+:root {
+  --brand-navy: #14213d;
+  --brand-amber: #e9a23b;
+}
+
+/* 2. Light theme: a calm, warm neutral palette. Navy is the accent. */
+:root {
+  color-scheme: light;
+
+  --canvas: #faf8f4; /* page and chat background */
+  --sidebar: #f3efe8; /* sidebar and panels */
+  --surface: #fffefb; /* inputs, cards, side panel */
+  --surface-hover: #ebe6dc; /* hover on list items and buttons */
+  --line: #e3ddd1; /* borders and dividers */
+
+  --ink: #26231f; /* main text */
+  --ink-muted: #6a6458; /* secondary text */
+  --ink-faint: #8c8576; /* placeholders, small labels */
+
+  --accent: var(--brand-navy); /* primary buttons, focus */
+  --accent-hover: color-mix(in srgb, var(--brand-navy) 86%, white);
+  --accent-ink: #fffdf8; /* text on the accent color */
+  --highlight: var(--brand-amber); /* small marks: avatar, selected items */
+  --highlight-soft: color-mix(in srgb, var(--brand-amber) 20%, var(--canvas));
+  --focus: var(--brand-navy);
+
+  --danger: #b3261e;
+  --danger-soft: #fceeeb;
+  --danger-line: #efc3bd;
+}
+
+/* 3. Dark theme: warm dark neutrals. Amber becomes the accent (navy is too dark on dark). */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas: #1b1a18;
+  --sidebar: #151412;
+  --surface: #242220;
+  --surface-hover: #2e2b27;
+  --line: #38342e;
+
+  --ink: #eeeae1;
+  --ink-muted: #a8a296;
+  --ink-faint: #7d776b;
+
+  --accent: var(--brand-amber);
+  --accent-hover: color-mix(in srgb, var(--brand-amber) 86%, white);
+  --accent-ink: var(--brand-navy);
+  --highlight: var(--brand-amber);
+  --highlight-soft: color-mix(in srgb, var(--brand-amber) 18%, var(--canvas));
+  --focus: var(--brand-amber);
+
+  --danger: #f2a29a;
+  --danger-soft: #3a1f1c;
+  --danger-line: #5e2e29;
+}
+
+/* 4. Tailwind class names for the tokens above: bg-canvas, text-ink, border-line, ... */
+@theme inline {
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-amber: var(--brand-amber);
+
+  --color-canvas: var(--canvas);
+  --color-sidebar: var(--sidebar);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-line: var(--line);
+
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-highlight: var(--highlight);
+  --color-highlight-soft: var(--highlight-soft);
+
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-line: var(--danger-line);
+
+  /* Inter is loaded by next/font in layout.tsx and exposed as --font-inter. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* 5. Defaults that use the tokens, so most elements need no color class at all. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--line); /* Tailwind 4 would otherwise use the text color */
+  }
+
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+  }
+
+  ::placeholder {
+    color: var(--ink-faint);
+    opacity: 1;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer; /* Tailwind 4 buttons use the default arrow */
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
 }

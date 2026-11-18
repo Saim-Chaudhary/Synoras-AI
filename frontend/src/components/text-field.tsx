@@ -22,7 +22,7 @@ export default function TextField({
 }: Props) {
   return (
     <div className="mt-5">
-      <label htmlFor={id} className="block text-sm font-medium text-gray-800">
+      <label htmlFor={id} className="block text-sm font-medium text-ink">
         {label}
       </label>
       <input
@@ -34,13 +34,13 @@ export default function TextField({
         onChange={(event) => onChange(event.target.value)}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
-        className={`mt-1 block w-full rounded-md border bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-700 ${
-          error ? "border-red-600" : "border-gray-400"
+        className={`mt-1 block w-full rounded-lg border bg-surface px-3 py-2 text-ink focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent ${
+          error ? "border-danger" : "border-line"
         }`}
       />
-      {hint && !error && <p className="mt-1 text-sm text-gray-500">{hint}</p>}
+      {hint && !error && <p className="mt-1 text-sm text-ink-muted">{hint}</p>}
       {error && (
-        <p id={`${id}-error`} role="alert" className="mt-1 text-sm text-red-700">
+        <p id={`${id}-error`} role="alert" className="mt-1 text-sm text-danger">
           {error}
         </p>
       )}

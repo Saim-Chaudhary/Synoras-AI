@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import AuthCard from "@/components/auth-card";
+import { buttonClass } from "@/components/button";
 import TextField from "@/components/text-field";
 import { ApiError } from "@/lib/api";
 import { getToken, login } from "@/lib/auth";
@@ -29,9 +30,9 @@ export default function LoginPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Already logged in? Go straight to the dashboard (it checks the token is still good).
+  // Already logged in? Go straight to the chat (it checks the token is still good).
   useEffect(() => {
-    if (getToken()) router.replace("/dashboard");
+    if (getToken()) router.replace("/chat");
   }, [router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -47,7 +48,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await login(email.trim(), password);
-      router.replace("/dashboard");
+      router.replace("/chat");
     } catch (error) {
       setFormError(loginMessage(error));
       setSubmitting(false);
@@ -77,30 +78,26 @@ export default function LoginPage() {
         />
 
         {formError && (
-          <p role="alert" className="mt-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p
+            role="alert"
+            className="mt-4 rounded-lg border border-danger-line bg-danger-soft px-3 py-2 text-sm text-danger"
+          >
             {formError}
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-6 w-full cursor-pointer rounded-md bg-gray-700 px-4 py-3 font-bold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
-        >
+        <button type="submit" disabled={submitting} className={buttonClass("primary", "mt-6 w-full")}>
           {submitting ? "Logging in..." : "Log In"}
         </button>
       </form>
 
-      <div className="my-5 flex items-center gap-3 text-sm text-gray-500">
-        <div className="h-px flex-1 bg-gray-300" />
+      <div className="my-5 flex items-center gap-3 text-sm text-ink-faint">
+        <div className="h-px flex-1 bg-line" />
         or
-        <div className="h-px flex-1 bg-gray-300" />
+        <div className="h-px flex-1 bg-line" />
       </div>
 
-      <Link
-        href="/register"
-        className="block w-full rounded-md border border-gray-600 bg-white px-4 py-3 text-center font-bold text-gray-800 hover:bg-gray-50"
-      >
+      <Link href="/register" className={buttonClass("secondary", "w-full")}>
         Create an account
       </Link>
     </AuthCard>
