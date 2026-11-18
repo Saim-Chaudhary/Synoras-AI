@@ -15,11 +15,10 @@ import {
 } from "@/components/icons";
 import Logo from "@/components/logo";
 
-import ChatHistory, { type ChatGroup } from "./chat-history";
-import { useShell } from "./shell-context";
+import { useChat } from "@/components/chat/chat-provider";
 
-// No chats exist yet. The chat feature will load the real list.
-const NO_CHATS: ChatGroup[] = [];
+import ChatHistory from "./chat-history";
+import { useShell } from "./shell-context";
 
 // The round badge with the first letter of the user's name.
 function Avatar({ name }: { name: string }) {
@@ -54,7 +53,7 @@ function Section({ title, emptyText }: { title: string; emptyText: string }) {
 
 export default function Sidebar() {
   const { user, logout, sidebarCollapsed, toggleSidebar } = useShell();
-  const [query, setQuery] = useState("");
+  const { search, setSearch } = useChat();
 
   // Collapsed: a narrow strip with only the icons.
   if (sidebarCollapsed) {
@@ -106,15 +105,15 @@ export default function Sidebar() {
             type="search"
             aria-label="Search chats"
             placeholder="Search chats"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
             className="w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-sm text-ink focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
       </div>
 
       <nav aria-label="Chats, projects and memory" className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-        <ChatHistory groups={NO_CHATS} query={query} />
+        <ChatHistory />
         <Section title="Projects" emptyText="No projects yet." />
         <Section title="Memory" emptyText="Nothing remembered yet." />
       </nav>

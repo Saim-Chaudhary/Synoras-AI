@@ -5,7 +5,7 @@ Build order. Update this file after every task. Legend: `[ ]` not started, `[~]`
 Spec status: problems B1 to B9 are resolved in `docs/spec/` (see `decisions.md` and `spec-changes.md`). The seven smaller inconsistencies and the fourteen GraphRAG questions (G1 to G14) were all answered on 2026-11-18 (decisions A20). The specs were not edited for those answers, so where A20 differs from the spec text, A20 wins. **On 2026-11-18 the Knowledge Base module changed from RAG to GraphRAG** (Scope, SRS and SDD updated; nothing built yet).
 
 Rules now in force (see `decisions.md` A6 to A9):
-- **A thin sample UI beside each backend feature** (decisions A17): simple, Tailwind only, no extra UI libraries except Cytoscape.js for the knowledge graph panel (decisions A20), no animations, roughly following the mockups. The final design polish is done at the end. The backend is still tested through `/docs` and automatic tests.
+- **A thin sample UI beside each backend feature** (decisions A17): simple, Tailwind only, no extra UI libraries except Cytoscape.js for the knowledge graph panel (decisions A20) and react-markdown with remark-gfm for chat answers (decisions A24), no animations, roughly following the mockups. The final design polish is done at the end. The backend is still tested through `/docs` and automatic tests.
 - **Docker is installed and working** (Docker 29.9.3, Compose v5.7.0). Nothing is blocked by Docker any more. PostgreSQL + pgvector and Redis run in containers (`docker/docker-compose.yml`). The database is on port **5433** (a Windows PostgreSQL service already uses 5432). Database code may be run, after its plan is approved.
 - Python uses **uv** (`backend/pyproject.toml`). Cloud models: Groq and OpenRouter.
 
@@ -32,10 +32,11 @@ Rules now in force (see `decisions.md` A6 to A9):
   - [ ] Log out: there is no server endpoint. The browser just throws the token away, and it expires after 60 minutes. Waiting for your decision (decisions A16)
   - [ ] Protect or remove the temporary `/dev` endpoints: still open and unprotected. Waiting for your decision (decisions A13, A16)
   - [ ] How the first administrator account is created: not built; it belongs to the Admin step (for now set `role` in the database by hand)
-- [ ] **3. Chat** (FR-3, FR-4)
-  - [ ] Send a message and get a streamed reply (the message box and the empty chat already exist in the app shell; the Send button is disabled until this step)
-  - [ ] Conversation history: new, reopen, search, delete (fills the sidebar list, grouped by date)
-  - [ ] Chat screen behaviours from the UI direction (A21): markdown and code rendering with copy buttons (**needs your decision: a markdown library breaks rule A17**), Stop generating, Regenerate, editing a previous message
+- [~] **3. Chat** (FR-3, FR-4): built and tested (173 backend tests pass; also tried in a real browser with a fake local model, because there are no API keys and no Ollama yet). See decisions A23 and A24.
+  - [x] Send a message and get a streamed reply: classifier, router, Server-Sent Events token by token, reply saved with `model_used`, a `subtasks` row (complexity, tier, model, time, estimated cost), a final `done` event with tier and time; recent history sent as context (last 20 messages, at most 8000 characters)
+  - [x] Conversation history: new, reopen, rename, delete, search by title and message text; sidebar grouped by date. Short title made from the first message with the Low tier. Every query is limited to the logged-in user (a chat of another user answers 404)
+  - [x] Fallback upward when a tier is unavailable or rate-limited (noted in the log and on the reply); clear error messages, no crash. Stop generating (the half written reply is saved), Regenerate, edit the last message, copy buttons, markdown and code rendering (`react-markdown` + `remark-gfm`, approved, decisions A24), small note under each reply: tier, model, complexity, time, estimated cost
+  - [ ] Real answers need keys: `GROQ_API_KEY`/`GROQ_MODEL`, `OPENROUTER_API_KEY`/`OPENROUTER_MODEL` in `backend/.env`, or Ollama installed (`OLLAMA_MODEL`). Until then the chat shows the clear "not configured" error
   - [ ] Use the side panel for sources (and later the live knowledge graph and memory conflicts)
 - [ ] **4. Memory** (FR-5 to FR-8)
   - [ ] Summarize finished chats and extract memories (background job)

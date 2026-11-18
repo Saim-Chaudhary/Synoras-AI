@@ -44,8 +44,8 @@ Synoras_AI/
     src/app/       pages and layouts (App Router): each folder here becomes a web address
     src/app/globals.css  the ONLY place with color values: brand colors, light and dark palettes and the class names (bg-surface, text-ink, ...)
     src/app/(app)/  pages that need a login and are shown inside the app shell ("(app)" is only a grouping folder, not part of the address)
-    src/components/  pieces several pages share (logo, button, icons, auth-card, text-field, status-screen), app-shell/ (sidebar, top bar, side panel), chat/ (empty-chat, composer)
-    src/lib/       helpers: api.ts (calls the backend), auth.ts (keeps the token), use-require-auth.ts (the login guard), theme.ts (light/dark), use-persisted.ts (remembered settings)
+    src/components/  pieces several pages share (logo, button, icons, auth-card, text-field, status-screen), app-shell/ (sidebar, top bar, side panel, chat-history), chat/ (chat-provider, chat-screen, message-item, markdown, composer, empty-chat, copy-button)
+    src/lib/       helpers: api.ts (calls the backend), auth.ts (keeps the token), chats.ts (chat endpoints), stream.ts (reads the reply stream), group-chats.ts and format.ts (sidebar date groups, the note under a reply), use-require-auth.ts (the login guard), theme.ts (light/dark), use-persisted.ts (remembered settings)
   backend/         the server brain (FastAPI, Python)
     app/
       api/         the URLs the website can call (one file per feature)
@@ -155,7 +155,29 @@ Backend skeleton is built. For now we build the backend only and test it through
 - **Result:** the user's details, or 401 / 403.
 
 ## Chat
-Not built yet.
+**Goal:** the user writes a message and watches the answer appear word by word, in a chat that is saved (FR-3, FR-4, FR-20 to FR-22).
+
+**1. Open the chat screen** (`/chat` is a new chat, `/chat/12` is chat 12)
+- **User does:** goes to the page. The sidebar loads `GET /chats` (newest first, grouped by date in the browser by `lib/group-chats.ts`). A chat from the sidebar loads `GET /chats/{id}` with its messages and the routing note of each reply.
+- **Files, in order:** `components/chat/chat-provider.tsx` (all chat state, reads the address) -> `lib/chats.ts` -> `app/api/chats.py` -> `services/chat_service.py` (`own_chat` returns 404 for a chat of someone else).
+
+**2. Send a message** (`POST /chats/{id}/messages`, the answer is a stream of Server-Sent Events)
+- **User does:** types, presses Enter. For the first message the browser first creates the chat (`POST /chats`) and changes the address to `/chat/{id}` without reloading.
+- **Files, in order:**
+  1. `app/api/chats.py` `get_turn`: checks the chat belongs to the user, saves the user message. This happens *before* streaming, so a wrong chat is a normal 404 and the message is never lost.
+  2. `services/chat_service.py` `build_prompt`: system prompt + recent history (20 messages, 8000 characters, oldest dropped first).
+  3. `services/event_pump.py` `pump`: runs the generator below in a thread and hands its events to the web server (decisions A24 explains why).
+  4. `services/chat_stream.py` `stream_reply`: `routing/classifier.py` rates the message -> tier -> `routing/model_client.py` `StreamedReply` streams from the model; `routing/router.py` `tiers_from` gives the order of tiers to try (a failing tier falls back one tier up, before the first word only).
+  5. Events sent, in order: `start` (complexity, planned tier), `fallback` (only if a tier failed), `token` (many), `done` (message id, tier, model, seconds, tokens, estimated cost), `title` (first message only). `error` replaces `done` if no model could answer.
+  6. The full reply is saved in `messages` (with `model_used`) and one row in `subtasks` (kind `reply`). A title is made with the Low tier (logged as kind `title`).
+- **Browser side:** `lib/stream.ts` reads the events (`fetch`, because `EventSource` cannot send the login header or POST) -> `chat-provider.tsx` updates the messages -> `message-item.tsx` and `markdown.tsx` draw them.
+- **Result:** the reply is on screen and saved; the note under it shows tier, model, complexity, time and estimated cost.
+
+**3. Stop, Regenerate, Edit**
+- **Stop generating:** the browser cancels the request. The server notices that nobody reads any more (after about 3 seconds), closes the model stream and saves the half written reply with the note "Stopped before the reply was finished". The screen keeps the text at once.
+- **Regenerate / edit the last message:** the same endpoint with `action` = `regenerate` or `edit`. The last reply (and for edit, the old text) is replaced; the old reply's `subtasks` row goes with it.
+
+**4. Rename, delete, search:** `PATCH /chats/{id}`, `DELETE /chats/{id}`, `GET /chats?q=text` (title or any message text, case-insensitive). All limited to the user's own chats.
 
 ## Memory
 Not built yet.

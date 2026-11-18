@@ -65,3 +65,46 @@ def route(
     except ModelCallError as error:
         raise RoutingError(error, rating, planned) from error
     return RoutedResult(rating, planned, result, fallback_used=True, fallback_reason=local_problem)
+
+
+# ---------------------------------------------------------------------------------------
+# Falling back to the next tier UP (used by chat, decisions A24)
+# ---------------------------------------------------------------------------------------
+
+TIER_ORDER = (Tier.LOCAL, Tier.SMALL_CLOUD, Tier.STRONG_CLOUD)
+
+# When a tier fails with one of these, it counts as "unavailable" and the next tier up is tried.
+# "other" (for example an empty answer) is not in the list: another model would not fix it.
+FALLBACK_KINDS = {
+    "not_configured",
+    "unavailable",
+    "unreachable",
+    "server_error",
+    "rate_limited",
+    "model_not_found",
+    "auth",
+}
+
+
+def tiers_from(planned: Tier) -> list[Tier]:
+    """The planned tier and every tier above it, in the order they are tried."""
+    return list(TIER_ORDER[TIER_ORDER.index(planned) :])
+
+
+def call_with_fallback(
+    tiers: list[Tier], prompt: str | list, settings: Settings | None = None
+) -> tuple[ModelResult, list[str]]:
+    """Ask the tiers in order until one answers. Returns the result and a note for each tier that failed."""
+    settings = settings or get_settings()
+    failures: list[str] = []
+    last_error: ModelCallError | None = None
+    for tier in tiers:
+        try:
+            return call_model(tier, prompt, settings), failures
+        except ModelCallError as error:
+            failures.append(f"{tier.value}: {error.message}")
+            last_error = error
+            if error.kind not in FALLBACK_KINDS:
+                raise
+    assert last_error is not None
+    raise last_error

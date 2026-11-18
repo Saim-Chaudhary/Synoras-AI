@@ -11,7 +11,7 @@ do the retrying here, where it is easy to see.
 """
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 
 import groq
@@ -44,6 +44,7 @@ class ModelResult:
     tokens_out: int | None
     estimated_cost_usd: float | None
     actual_cost_usd: float | None
+    usage_estimated: bool = False  # True when the provider sent no token counts and we guessed
 
 
 def model_name_for(tier: Tier, settings: Settings) -> str:
@@ -97,6 +98,7 @@ def build_model(tier: Tier, settings: Settings):
         max_retries=0,
         timeout=REQUEST_TIMEOUT_SECONDS,
         max_tokens=MAX_OUTPUT_TOKENS,
+        stream_usage=True,  # ask for the token counts at the end of a streamed answer
     )
 
 
@@ -148,15 +150,19 @@ def _text_of(response) -> str:
 
 def call_model(
     tier: Tier,
-    prompt: str,
+    prompt: str | list,
     settings: Settings | None = None,
     *,
-    factory: Callable = build_model,
+    factory: Callable | None = None,
     sleep: Callable[[float], None] = time.sleep,
 ) -> ModelResult:
-    """Send one prompt to a tier. Raises ModelCallError when it cannot be answered."""
+    """Send one prompt (text, or a list of {"role", "content"} messages) to a tier.
+
+    Raises ModelCallError when it cannot be answered. (`factory` is looked up when the function
+    runs, not when it is defined, so tests can swap in a fake model.)
+    """
     settings = settings or get_settings()
-    model = factory(tier, settings)
+    model = (factory or build_model)(tier, settings)
     started = time.perf_counter()
 
     for attempt in range(MAX_RETRIES + 1):
@@ -196,3 +202,129 @@ def call_model(
         estimated_cost_usd=cost.estimated_usd,
         actual_cost_usd=cost.actual_usd,
     )
+
+
+# ---------------------------------------------------------------------------------------
+# Streaming: the answer arrives piece by piece (SRS FR-3, PER-2)
+# ---------------------------------------------------------------------------------------
+
+
+def _estimate_tokens(characters: int) -> int:
+    """A rough guess (about 4 characters per token) for providers that send no token counts."""
+    return max(1, round(characters / 4))
+
+
+class StreamedReply:
+    """Runs one tier and hands out the answer piece by piece.
+
+        reply = StreamedReply(Tier.SMALL_CLOUD, messages)
+        for piece in reply:        # each piece is a bit of text, as the model writes it
+            show(piece)
+        reply.result               # time, tokens and cost: only filled in when the loop finished
+
+    Rules (same as call_model, FR-21):
+      * a missing key, an unreachable provider, a rate limit... raise ModelCallError;
+      * if the provider cannot be reached or has a server error BEFORE the first piece arrived,
+        we retry up to 2 times; once text has been shown, nothing is retried (the caller keeps
+        the text so far in `reply.text`).
+    """
+
+    def __init__(
+        self,
+        tier: Tier,
+        messages: list[dict],
+        settings: Settings | None = None,
+        *,
+        factory: Callable | None = None,
+        sleep: Callable[[float], None] = time.sleep,
+    ):
+        self.tier = tier
+        self.messages = messages
+        self.settings = settings or get_settings()
+        self._factory = factory
+        self._sleep = sleep
+        self.text = ""  # everything received so far
+        self.result: ModelResult | None = None
+        self._started: float | None = None
+
+    def partial_result(self) -> ModelResult:
+        """A result for a reply that was cut short (stopped by the user, or the stream broke).
+        The token counts are guessed from the text, because the provider never sent them."""
+        seconds = round(time.perf_counter() - (self._started or time.perf_counter()), 3)
+        tokens_in = _estimate_tokens(sum(len(str(m.get("content", ""))) for m in self.messages))
+        tokens_out = _estimate_tokens(len(self.text))
+        name = model_name_for(self.tier, self.settings)
+        cost = estimate_cost(name, tokens_in, tokens_out, local=self.tier is Tier.LOCAL)
+        return ModelResult(
+            text=self.text.strip(),
+            model=name,
+            tier=self.tier,
+            seconds=seconds,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            estimated_cost_usd=cost.estimated_usd,
+            actual_cost_usd=cost.actual_usd,
+            usage_estimated=True,
+        )
+
+    def __iter__(self) -> Iterator[str]:
+        model = (self._factory or build_model)(self.tier, self.settings)
+        started = self._started = time.perf_counter()
+        full = None  # the chunks added together: the token counts are at the end of it
+
+        for attempt in range(MAX_RETRIES + 1):
+            stream = None
+            full = None
+            try:
+                stream = iter(model.stream(self.messages))
+                for chunk in stream:
+                    full = chunk if full is None else full + chunk
+                    piece = chunk.text
+                    if piece:
+                        self.text += piece
+                        yield piece
+                break
+            except ModelCallError:
+                raise
+            except Exception as error:
+                call_error = to_call_error(error, self.tier, self.settings)
+                if self.text or call_error.kind not in RETRYABLE_KINDS or attempt == MAX_RETRIES:
+                    raise call_error from error
+                self._sleep(RETRY_BASE_DELAY_SECONDS * 2**attempt)
+            finally:
+                close = getattr(stream, "close", None)
+                if close:
+                    close()  # stop the provider from writing more if we stopped listening
+
+        seconds = round(time.perf_counter() - started, 3)
+        text = self.text.strip()
+        if not text:
+            raise ModelCallError(
+                "other",
+                "The model returned an empty answer (it may have used all its tokens thinking). "
+                "Try again.",
+                self.tier,
+            )
+
+        usage = (getattr(full, "usage_metadata", None) or {}) if full is not None else {}
+        tokens_in = usage.get("input_tokens")
+        tokens_out = usage.get("output_tokens")
+        estimated = False
+        if tokens_in is None or tokens_out is None:
+            tokens_in = _estimate_tokens(sum(len(str(m.get("content", ""))) for m in self.messages))
+            tokens_out = _estimate_tokens(len(text))
+            estimated = True
+
+        name = model_name_for(self.tier, self.settings)
+        cost = estimate_cost(name, tokens_in, tokens_out, local=self.tier is Tier.LOCAL)
+        self.result = ModelResult(
+            text=text,
+            model=name,
+            tier=self.tier,
+            seconds=seconds,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            estimated_cost_usd=cost.estimated_usd,
+            actual_cost_usd=cost.actual_usd,
+            usage_estimated=estimated,
+        )

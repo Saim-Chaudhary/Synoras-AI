@@ -1,5 +1,7 @@
 """Shared test setup for tests that need the real database and a working login configuration."""
 
+from contextlib import nullcontext
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
@@ -7,7 +9,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
-from app.db.session import engine, get_db
+from app.db.session import engine, get_db, get_session_factory
 from app.main import app
 
 TEST_JWT_SECRET = "test-secret-that-is-long-enough-for-hs256-0123456789"
@@ -50,8 +52,13 @@ def db_session(database_available):
 
 @pytest.fixture
 def client(db_session, test_settings):
-    """A test client whose app uses the rolled-back session and the test settings."""
+    """A test client whose app uses the rolled-back session and the test settings.
+
+    A streamed answer opens its own session, so the "new session" factory is replaced too:
+    it hands out the same rolled-back session (and does not close it).
+    """
     app.dependency_overrides[get_db] = lambda: db_session
     app.dependency_overrides[get_settings] = lambda: test_settings
+    app.dependency_overrides[get_session_factory] = lambda: (lambda: nullcontext(db_session))
     yield TestClient(app)
     app.dependency_overrides.clear()

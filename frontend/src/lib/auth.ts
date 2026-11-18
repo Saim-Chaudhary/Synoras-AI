@@ -5,7 +5,7 @@
 // (see decisions A18). Next.js renders pages on the server first, where localStorage does not
 // exist, so these functions must only be called from the browser (inside effects or handlers).
 
-import { ApiError, apiFetch } from "@/lib/api";
+import { ApiError, apiFetch, type HttpMethod } from "@/lib/api";
 
 const TOKEN_KEY = "synoras_token";
 
@@ -71,7 +71,7 @@ export function logout(): void {
 // If the backend says the token is no good (401), it is thrown away, so nobody keeps using it.
 export async function authFetch<T>(
   path: string,
-  options: { method?: "GET" | "POST"; body?: unknown } = {},
+  options: { method?: HttpMethod; body?: unknown } = {},
 ): Promise<T> {
   const token = getToken();
   if (!token) throw new ApiError(401, "Not logged in.");

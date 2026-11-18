@@ -1,5 +1,6 @@
 "use client";
 
+import { useChat } from "@/components/chat/chat-provider";
 import IconButton from "@/components/icon-button";
 import { PanelRightIcon } from "@/components/icons";
 
@@ -9,10 +10,11 @@ import ThemeToggle from "./theme-toggle";
 // The bar above the chat: the chat title on the left, the theme and side panel buttons on the right.
 export default function Topbar() {
   const { panelOpen, togglePanel } = useShell();
+  const { title } = useChat();
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
-      <p className="truncate text-sm font-medium text-ink">New chat</p>
+      <p className="truncate text-sm font-medium text-ink">{title}</p>
       <div className="flex items-center gap-1">
         <ThemeToggle />
         <IconButton

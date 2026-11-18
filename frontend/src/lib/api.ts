@@ -18,8 +18,10 @@ export class ApiError extends Error {
   }
 }
 
+export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
+
 type Options = {
-  method?: "GET" | "POST";
+  method?: HttpMethod;
   body?: unknown; // sent as JSON
   token?: string | null; // sent as "Authorization: Bearer <token>"
 };
@@ -41,6 +43,7 @@ export async function apiFetch<T>(path: string, options: Options = {}): Promise<
   }
 
   if (!response.ok) throw await readError(response);
+  if (response.status === 204) return undefined as T; // "done, nothing to send back" (for example after a delete)
   return (await response.json()) as T;
 }
 
@@ -48,7 +51,7 @@ export async function apiFetch<T>(path: string, options: Options = {}): Promise<
 //   {"detail": "Invalid login"}                         a plain message
 //   {"detail": [{"loc": ["body","email"], "msg": ..}]}  problems with specific inputs (422)
 //   {"detail": {"status": "error", ...}}                other details (for example 503)
-async function readError(response: Response): Promise<ApiError> {
+export async function readError(response: Response): Promise<ApiError> {
   let detail: unknown;
   try {
     detail = (await response.json()).detail;

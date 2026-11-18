@@ -19,6 +19,12 @@ engine = create_engine(
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 
+def get_session_factory() -> sessionmaker[Session]:
+    """FastAPI dependency: a way to open a NEW session. A streamed answer uses it, because the
+    request's own session may already be closed when a stopped stream cleans up (decisions A24)."""
+    return SessionLocal
+
+
 def get_db() -> Iterator[Session]:
     """FastAPI dependency: gives one session to a request and always closes it afterwards."""
     with SessionLocal() as session:

@@ -131,8 +131,8 @@ Status is one of: `Proposed` (waiting for your approval), `Approved`, `Resolved`
 - **Reason:** JWT needs no database or Redis lookup to check a token, and the rest follows the spec so you can explain it in the defense.
 
 ### A17. A thin sample UI beside each backend feature
-- **Status:** Approved (by you). This replaces the "backend first, no frontend screens" part of A7. Updated in A20: Cytoscape.js is allowed for the knowledge graph panel.
-- **Decision:** From now on, every backend feature gets a thin **sample UI** in `frontend/`, built beside it. It is simple and unpolished, and follows the mockups only roughly. Rules for every page: **Tailwind only, no extra UI libraries except Cytoscape.js (for the knowledge graph panel only), no animations.** The final design polish (colours, fonts, layout, the real look of the mockups) is done at the end of the project. The backend is still tested through `/docs` and automatic tests as before.
+- **Status:** Approved (by you). This replaces the "backend first, no frontend screens" part of A7. Updated in A20: Cytoscape.js is allowed for the knowledge graph panel. Updated 2026-11-19: `react-markdown` and `remark-gfm` are allowed for chat answers (A24).
+- **Decision:** From now on, every backend feature gets a thin **sample UI** in `frontend/`, built beside it. It is simple and unpolished, and follows the mockups only roughly. Rules for every page: **Tailwind only, no extra UI libraries except Cytoscape.js (for the knowledge graph panel only) and react-markdown with remark-gfm (for rendering chat answers only), no animations.** The final design polish (colours, fonts, layout, the real look of the mockups) is done at the end of the project. The backend is still tested through `/docs` and automatic tests as before.
 - **Alternatives:** Keep all UI for the end (A7); build the polished UI feature by feature.
 - **Reason:** A small page next to each feature shows that the feature really works from a browser (CORS, tokens, error messages), and it spreads the UI work over the whole project instead of leaving it all for the end. Keeping pages plain keeps them cheap to build and easy to explain.
 
@@ -222,6 +222,25 @@ Status is one of: `Proposed` (waiting for your approval), `Approved`, `Resolved`
 - **Checked:** lint, TypeScript and `npm run build` pass. In a real browser: login and register pages in both themes, the shell at 1366 × 768 (panel docked), 1024 and 768 wide (no sideways scroll), sidebar collapse, side panel, theme toggle, theme and sidebar choice kept after a reload, the error screen with the backend stopped, and Log out.
 - **Docs checked:** the Next.js docs in `node_modules` (fonts, icons, manifest, preventing a flash before hydration) and Context7 for Next.js, Tailwind (dark variant, `@theme inline`) and React (context, `useSyncExternalStore`).
 - **Not updated:** `CLAUDE.md` still has the old frontend rules (the old A17 wording, no mention of the color rule). Ask for it to be updated when you want.
+
+### A23. Chat: tables, endpoints and small deviations from the SDD
+- **Status:** Approved (you asked for the chat feature; the choices below are mine)
+- **Tables** (migration 0003): `chats`, `messages` and `subtasks` as in the SDD, plus: `chats.updated_at` (for ordering and date groups), `subtasks.message_id` (the SDD ties a subtask to a message: here to the reply), `subtasks.kind` (`reply` or `title`), `subtasks.tier`, `subtasks.note` (for example "Planned local, answered by small_cloud. Unavailable: ...") and `subtasks.created_at`. `chats.project_id` is a plain number with **no foreign key** until the Projects step creates that table.
+- **Cost is an estimate** (A12): the log row and the note show the estimated cost from the paid price list; on free plans nothing is charged.
+- **Not logged:** an attempt where no model answered has no reply, so it has no `subtasks` row (the error is shown to the user). Regenerate deletes the old reply, so its log row goes with it.
+- **Not in the prompt yet:** memories (Memory step) and documents (GraphRAG).
+- **Endpoints:** `POST/GET /chats`, `GET/PATCH/DELETE /chats/{id}`, `POST /chats/{id}/messages`. A chat of another user answers 404, never 403, so its existence is not revealed (BR-1).
+
+### A24. Chat: streaming, fallback, Stop and the markdown renderer
+- **Status:** Approved (you answered the open points on 2026-11-19: use react-markdown; the 3 second Stop delay and the Regenerate behaviour stay as they are)
+- **Streaming:** FastAPI's own Server-Sent Events (`EventSourceResponse`). The browser reads it with `fetch` (EventSource cannot POST or send the login header). Checks that could fail (wrong chat, empty text) run in a dependency *before* the stream starts, because an error raised inside a stream is not a clean 404.
+- **Fallback:** only for failures where another tier can help (not configured, unavailable, unreachable, server error, rate limited, model not found, bad key). Upward only (Low, then Medium, then High). **Never after the first word was shown**: the half text is kept and the error says so.
+- **Stop generating:** with the current uvicorn and FastAPI the server is *not told* when the browser disconnects, so no clean-up code runs. `services/event_pump.py` runs the generator in a thread with a small queue; if nobody reads for 3 seconds the thread closes the generator, and that saves the partial reply. This was found by testing in a real browser (the first version passed its unit tests but lost the reply). Cost: up to about 3 seconds of extra model output after Stop, and a reload within those 3 seconds does not show the partial reply yet.
+- **Own database session:** the stream opens its own session (the request's one may already be closed).
+- **Limits:** history 20 messages / 8000 characters; one message 8000 characters.
+- **Title:** Low tier (falls back upward), at most 6 words; if every tier fails, the first 40 characters of the message. It never replaces a title the user already renamed.
+- **Markdown:** `react-markdown` with `remark-gfm` (tables, strikethrough, task lists) draws the answers. It replaced a hand-written renderer, which was removed. Raw HTML in a model's text is shown as plain text and never runs; links are limited to safe protocols by the library's default. `components/chat/markdown.tsx` only adds our token colors and the copy button on code blocks. This is an allowed exception to rule A17 (see A17). Checked in a real browser with a real model: heading, bold, list, table, link, strikethrough, code block with copy button. `npm audit` lists 7 moderate findings, all in the ESLint tooling (dev only), none in these two libraries.
+- **Checked:** 173 backend tests (fake models, no keys). In a real browser with a fake local model: streaming, markdown and code, copy, Stop (and the saved partial reply after a reload), Regenerate, edit, title, rename, delete, search by message text, the clear error when no model is available, and a chat that does not exist. Lint, TypeScript and `npm run build` pass.
 
 ---
 
