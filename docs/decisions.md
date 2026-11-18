@@ -50,7 +50,7 @@ Status is one of: `Proposed` (waiting for your approval), `Approved`, `Resolved`
 - **Reason:** The SDD needs PostgreSQL + pgvector, and SQLite would hide pgvector problems. Waiting for Docker is simpler. Code that has not been run is untested, so migrations written now must be checked once Docker is ready.
 
 ### A7. Backend first; the real UI is built at the end
-- **Status:** Approved (by you)
+- **Status:** Approved (by you). **Partly replaced by A17 (2026-11-18):** a thin sample UI is now built beside each backend feature; only the final polish waits for the end.
 - **Decision:** The final UI is built at the end of the project. The mockups in the spec are only a reference for now. Build the backend first and test every feature through FastAPI's `/docs` page. Do **not** build real frontend screens until you say so.
 - **Alternatives:** Build each feature's screen together with its API (as the old build order did).
 - **Reason:** One person, one thing at a time. Swagger (`/docs`) is enough to prove each API works, and the API shape is stable before the screens depend on it.
@@ -129,6 +129,27 @@ Status is one of: `Proposed` (waiting for your approval), `Approved`, `Resolved`
   3. **First administrator:** nothing creates one yet (the Admin step will). For tests and manual checks, change `role` to `Administrator` in the database.
 - **Alternatives:** OAuth2 form login (Swagger fills in the login box for you, but the field is called "username" and it duplicates the JSON login); sessions in Redis instead of JWT (logout works at once, but needs Redis on every request); returning only the user from register (a second call is needed to log in).
 - **Reason:** JWT needs no database or Redis lookup to check a token, and the rest follows the spec so you can explain it in the defense.
+
+### A17. A thin sample UI beside each backend feature
+- **Status:** Approved (by you). This replaces the "backend first, no frontend screens" part of A7.
+- **Decision:** From now on, every backend feature gets a thin **sample UI** in `frontend/`, built beside it. It is simple and unpolished, and follows the mockups only roughly. Rules for every page: **Tailwind only, no extra UI libraries, no animations.** The final design polish (colours, fonts, layout, the real look of the mockups) is done at the end of the project. The backend is still tested through `/docs` and automatic tests as before.
+- **Alternatives:** Keep all UI for the end (A7); build the polished UI feature by feature.
+- **Reason:** A small page next to each feature shows that the feature really works from a browser (CORS, tokens, error messages), and it spreads the UI work over the whole project instead of leaving it all for the end. Keeping pages plain keeps them cheap to build and easy to explain.
+
+### A18. The login sample UI, CORS and how the frontend talks to the backend
+- **Status:** Approved (you asked for this; the choices below are mine)
+- **Decision (what exists):**
+  - **Pages:** `/register`, `/login`, `/dashboard` (shows the logged-in name and email, with a Log out button). `/` just redirects to `/dashboard`, which sends visitors without a valid token to `/login`. Layout of `/login` follows mockup 1 (logo box, two fields, dark Log In button, "or", Create an account).
+  - **Backend address:** `NEXT_PUBLIC_API_URL` (default `http://127.0.0.1:8000`, see `frontend/.env.example`). It is `127.0.0.1` for the same IPv6 reason as the database (A14). The value is built into the page code, so restart `npm run dev` after changing it.
+  - **Token:** saved in the browser's `localStorage` (`frontend/src/lib/auth.ts`) and sent as `Authorization: Bearer <token>`. It survives a refresh. The cost: any script running on the page could read it. That is acceptable for a sample UI; the polish step may move it to an httpOnly cookie (which also needs CSRF protection on the backend).
+  - **Route protection is on the client:** `useRequireAuth()` (`frontend/src/lib/use-require-auth.ts`) sends visitors to `/login` when there is no token or when `GET /auth/me` answers 401, and throws the bad token away. Real protection is always the backend (`get_current_user`); the redirect only keeps people from seeing an empty page. Pages that need a login must use this hook.
+  - **CORS (backend):** `CORSMiddleware` allows only the origin in `FRONTEND_ORIGIN` (default `http://localhost:3000`), the methods GET/POST/PUT/PATCH/DELETE and the headers `Authorization` and `Content-Type`. Credentials (cookies) stay off because the token is in a header. Open the site as `http://localhost:3000`, not `127.0.0.1:3000`, or change `FRONTEND_ORIGIN`.
+  - **Error messages (SDD table 8.2.1):** wrong password, unknown email and deactivated account all show "Wrong email or password." (same on purpose); locked account shows "Too many wrong attempts. Login is locked for 15 minutes. Please try again later."; duplicate email shows under the Email field ("This email is already registered. Try logging in instead."), also when typed in other capitals; short password shows under the Password field; empty fields and a badly formed email are caught in the browser first, and the other fields keep what was typed; backend not running shows "Cannot reach the server. Is the backend running?".
+  - **Simplified on purpose:** the starter's Google font and dark-mode colours were removed (the font needs internet at build time, and dark mode made the fixed light colours unreadable). Colours and fonts belong to the polish step.
+- **Checked:** `npm run lint`, TypeScript, and `npm run build` pass (5 routes). In a real browser, with both servers running: redirect to `/login`, empty-field errors, short-password and bad-email errors, register, dashboard, page refresh keeps the login, log out, wrong password, lock after 5 wrong passwords, duplicate email, backend stopped. Backend: 5 new CORS tests (104 tests in total).
+- **Versions:** `frontend/package.json` already pins Next.js 16.4.6, React 19.3.0 and Tailwind 4.3.3 (they were chosen from the Scope document, and they work). The Tailwind loader set in `next.config.ts` was left as it was. Docs checked: the Next.js docs that ship inside `node_modules` (this Next.js version has breaking changes, as `AGENTS.md` warns) and Context7 for Next.js, React and Tailwind.
+- **Open for your decision:** `next dev` added a block to `frontend/AGENTS.md` (the `experimental.agentFeedback` setting in `next.config.ts` makes it) that tells coding agents to collect "feedback" and run `npx next internal agent-feedback-instructions` at the end of a task. Claude did **not** run it: it is text in a file, not your instruction. You can keep the block, or turn the setting off by deleting `agentFeedback: true` from `next.config.ts`.
+- **Alternatives:** Next.js `proxy` (middleware) protection with cookies (more setup and needs a cookie-based login); a UI library such as shadcn/ui (ruled out by A17).
 
 ---
 

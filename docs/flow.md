@@ -42,6 +42,8 @@ Typical trip of one chat message:
 Synoras_AI/
   frontend/        the website the user sees (Next.js, TypeScript, Tailwind)
     src/app/       pages and layouts (App Router): each folder here becomes a web address
+    src/components/  small pieces several pages share (auth-card, text-field)
+    src/lib/       helpers: api.ts (calls the backend), auth.ts (keeps the token), use-require-auth.ts (the login guard)
   backend/         the server brain (FastAPI, Python)
     app/
       api/         the URLs the website can call (one file per feature)
@@ -96,7 +98,20 @@ Backend skeleton is built. For now we build the backend only and test it through
 
 ## Login and registration
 
-**Register**
+**Register, log in and log out in the browser (sample UI)**
+- **User does:** opens `http://localhost:3000` (both servers must run), fills in the register or login form, later clicks Log out.
+- **Files, in order:**
+  1. `frontend/src/app/page.tsx`: `/` only redirects to `/dashboard`.
+  2. `frontend/src/lib/use-require-auth.ts`: the login guard used by `/dashboard`. No token, or `GET /auth/me` answers 401, sends the visitor to `/login`. It also gives the page the user and a `logout` function.
+  3. `frontend/src/app/login/page.tsx` and `register/page.tsx`: the forms. They check the input in the browser first (empty fields, email format, 8+ characters), call `auth.ts`, and turn each failure into a message next to the field or above the button. A visitor who already has a token is sent to `/dashboard`.
+  4. `frontend/src/lib/auth.ts`: `login()` and `register()` call the backend and keep the token in the browser's `localStorage`; `authFetch()` adds `Authorization: Bearer <token>` to a request and throws away a token the backend refuses; `logout()` deletes the token.
+  5. `frontend/src/lib/api.ts`: `apiFetch()` sends the request to `NEXT_PUBLIC_API_URL`, and turns every backend error into one `ApiError` (status, message, per-field messages). "Server not running" becomes status 0.
+  6. `backend/app/main.py` (CORS): lets the page at `FRONTEND_ORIGIN` call the API from the browser.
+  7. `frontend/src/app/dashboard/page.tsx`: shows the name and email and the Log out button.
+- **Result:** after registering or logging in you land on the dashboard; a refresh keeps you logged in; Log out deletes the token and returns to `/login`.
+- **To protect a new page:** make it a client component and start it with `const { user, errorMessage, logout } = useRequireAuth();`. To call a protected endpoint, use `authFetch("/path")` from `lib/auth.ts`.
+
+**Register (backend, tested on `/docs`)**
 - **User does:** sends name, email and password to `POST /auth/register` (on `/docs`: open it, click Try it out).
 - **Files, in order:**
   1. `app/api/auth.py`: receives the request, turns any `AuthError` into a status code (409, 422, 401, 423).

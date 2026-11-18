@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://synoras:synoras_password@127.0.0.1:5433/synoras"
     redis_url: str = "redis://127.0.0.1:6379/0"
 
+    # The address of the website (frontend). Only this origin may call the API from a browser
+    # (CORS, decisions A18). Change it if the frontend runs on another address or port.
+    frontend_origin: str = "http://localhost:3000"
+
     # Login tokens (decisions A16). The secret signs every token, so it must be long and private.
     # Empty by default so the app and tests start without a .env; login then answers 503
     # with a clear message instead of issuing weak tokens.

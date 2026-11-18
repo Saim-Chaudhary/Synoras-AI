@@ -5,7 +5,7 @@ Build order. Update this file after every task. Legend: `[ ]` not started, `[~]`
 Spec status: problems B1 to B9 are resolved in `docs/spec/` (see `decisions.md` and `spec-changes.md`). Seven smaller open inconsistencies are waiting for your approval (bottom of `spec-changes.md`). Ask before building a part they touch.
 
 Rules now in force (see `decisions.md` A6 to A9):
-- **Backend first.** Test every feature through FastAPI's `/docs` page. No real frontend screens until you say so; the mockups are reference only.
+- **A thin sample UI beside each backend feature** (decisions A17): simple, Tailwind only, no extra UI libraries, no animations, roughly following the mockups. The final design polish is done at the end. The backend is still tested through `/docs` and automatic tests.
 - **Docker is installed and working** (Docker 29.9.3, Compose v5.7.0). Nothing is blocked by Docker any more. PostgreSQL + pgvector and Redis run in containers (`docker/docker-compose.yml`). The database is on port **5433** (a Windows PostgreSQL service already uses 5432). Database code may be run, after its plan is approved.
 - Python uses **uv** (`backend/pyproject.toml`). Cloud models: Groq and OpenRouter.
 
@@ -18,13 +18,16 @@ Rules now in force (see `decisions.md` A6 to A9):
   - [x] Database connection (`backend/app/db/`), `GET /health/db` (reports pgvector version; 503 when the database is down)
   - [x] Alembic set up (`backend/alembic/`); migration 0001 enables pgvector, migration 0002 creates `users` (decisions A15)
   - [x] First table: `users` (all 9 columns of SDD 5.2), checked in PostgreSQL with `\d users`; downgrade and upgrade both work
-  - [ ] **POSTPONED (until you say so):** Frontend skeleton (Next.js)
+  - [x] Frontend skeleton (Next.js, App Router, Tailwind): starter page replaced; `lib/` helpers and `components/` added (decisions A18)
   - [ ] Redis connection from the app and Celery worker: Redis container runs, but no code uses it yet (comes with the first background job)
 - [~] **2. Login** (FR-1, FR-2): built and tested (99 tests pass; also tried on a live server). Two small items wait for your decision.
   - [x] Register (`POST /auth/register`): rejects a used email and a password under 8 characters; password stored as an argon2 hash
   - [x] Log in (`POST /auth/login`, JWT access token) and `GET /auth/me`
   - [x] 5 failed attempts in a row lock the account for 15 minutes; a successful login resets the counter; a deactivated account gets the same "Invalid login"
   - [x] Reusable `get_current_user` and `require_admin` dependencies (`backend/app/api/deps.py`) for protecting later endpoints
+  - [x] **Sample UI:** `/register`, `/login`, `/dashboard` (name, email, Log out); API helper with the backend address from `NEXT_PUBLIC_API_URL`; auth helper that stores the token and attaches it; redirect to `/login` without a valid token (`frontend/`)
+  - [x] CORS in the backend (only `FRONTEND_ORIGIN`, default `http://localhost:3000`); 5 tests
+  - [x] Clear messages for wrong password, locked account, duplicate email, short password, backend not running; checked by hand in a real browser; `npm run lint`, type check and `npm run build` pass
   - [ ] Log out: there is no server endpoint. The browser just throws the token away, and it expires after 60 minutes. Waiting for your decision (decisions A16)
   - [ ] Protect or remove the temporary `/dev` endpoints: still open and unprotected. Waiting for your decision (decisions A13, A16)
   - [ ] How the first administrator account is created: not built; it belongs to the Admin step (for now set `role` in the database by hand)
@@ -70,7 +73,8 @@ Rules now in force (see `decisions.md` A6 to A9):
 - Docker: **no longer blocked** (installed and working; database and Redis containers are running).
 - Ollama (local model): not installed yet. Until then the Low tier falls back to the smaller cloud model.
 - Your real-key test of Groq and OpenRouter on `/docs` (`POST /dev/route`).
-- The Next.js frontend and all real screens: postponed to the end, on your word.
+- Your decision on the `AGENTS.md` "feedback" block that `next dev` added (keep it, or remove `agentFeedback: true` from `frontend/next.config.ts`): see decisions A18.
+- Final design polish of all screens: at the end of the project (decisions A17).
 
 ## Optional, later
 - [ ] Password reset (needs an email service; not in version 1.0)

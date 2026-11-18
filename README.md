@@ -47,7 +47,7 @@ The project is in its early build phase and is not ready to use yet. The backend
 | Register and login (argon2 passwords, JWT tokens, 15-minute lock after 5 wrong passwords) | Done |
 | Background jobs (Celery) | Not started |
 | Chat, memory, documents, projects, multi-agent, PDF reports, admin | Not started |
-| Web interface (Next.js) | Planned for the end |
+| Web interface (Next.js): plain sample pages built beside each feature (login, register, dashboard so far) | In progress; the final design comes at the end |
 
 Details and the build order are in [`docs/progress.md`](docs/progress.md).
 
@@ -72,6 +72,7 @@ Every answer comes back with the time it took and an estimated cost.
 | Git | download the project | <https://git-scm.com/downloads> |
 | Docker Desktop | runs the database and Redis (open it and wait until it says it is running) | <https://www.docker.com/products/docker-desktop/> |
 | uv | installs Python 3.14 and the libraries for you (you do not need to install Python yourself) | <https://docs.astral.sh/uv/getting-started/installation/> |
+| Node.js 20.9 or newer (comes with npm) | runs the website | <https://nodejs.org> |
 
 ### 2. Download the project
 
@@ -138,12 +139,35 @@ Open <http://127.0.0.1:8000/docs>. Try `GET /health` and `GET /health/db` (it sh
 3. `GET /auth/me` now returns your account. Without a token it returns 401.
 4. `POST /auth/login` logs in again later. Five wrong passwords in a row lock the account for 15 minutes.
 
+### 6. Start the website (frontend)
+
+Keep the backend from step 5 running, and open a **second terminal** in the project folder:
+
+```bash
+cd frontend
+npm install        # first time only
+npm run dev
+```
+
+Open <http://localhost:3000> (type `localhost`, not `127.0.0.1`: the backend only accepts that address). You land on the login page. Create an account, and you reach the dashboard.
+
+Things to try: a password under 8 characters, an email that is already registered, a wrong password, five wrong passwords in a row (the account locks for 15 minutes), Log out, and refreshing the dashboard (you stay logged in).
+
+The website finds the backend at `http://127.0.0.1:8000`. To change that, copy `frontend/.env.example` to `frontend/.env.local`, edit it, and restart `npm run dev`.
+
 ### Every day after that
 
 ```bash
 docker compose -f docker/docker-compose.yml up -d     # from the project folder
 cd backend
 uv run fastapi dev app/main.py
+```
+
+And in a second terminal:
+
+```bash
+cd frontend
+npm run dev
 ```
 
 When you finish, stop the containers (your data is kept):
@@ -162,6 +186,8 @@ docker compose -f docker/docker-compose.yml down
 - **Problems?**
   - *"Cannot connect to the Docker daemon"*: Docker Desktop is not running. Open it and wait.
   - *"port is already allocated"*: another program uses 5433 or 6379. Close it, or change the left-hand port number in `docker/docker-compose.yml` and in `DATABASE_URL` in `backend/.env`.
+  - *The login page says "Cannot reach the server"*: the backend is not running, or `NEXT_PUBLIC_API_URL` points to the wrong address.
+  - *The browser console shows a CORS error*: open the site as `http://localhost:3000`, or set `FRONTEND_ORIGIN` in `backend/.env` to the address in your browser's address bar and restart the backend.
   - *`/health/db` says `unreachable`*: run the `ps` command from step 4 and check that the database is `healthy`.
   - *A model call says "Free limit reached"*: free plans allow few requests (OpenRouter free models: 50 a day). Wait and try again.
 - **Ollama (the local model) is optional for now.** Without it, simple messages use the Groq model instead.
