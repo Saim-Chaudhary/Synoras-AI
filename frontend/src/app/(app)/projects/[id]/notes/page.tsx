@@ -115,7 +115,7 @@ export default function NotesPage() {
         )}
 
         {status === "ready" && notes.length === 0 && !adding && (
-          <div className="rounded-card border border-line-strong px-6 py-10 text-center">
+          <div className="rounded-card border border-line bg-raised px-6 py-10 text-center">
             <h3 className="font-semibold text-ink">No notes yet</h3>
             <p className="mx-auto mt-1.5 max-w-md text-ink-muted">
               Notes are short summaries and decisions about this project, for example &quot;We use one database for
@@ -156,11 +156,11 @@ export default function NotesPage() {
                     onCancel={() => setDeletingId(null)}
                   />
                 ) : (
-                  <article className="rounded-card border border-line-strong bg-surface p-4">
+                  <article className="rounded-card border border-line bg-raised p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-                          <span className="rounded-full border border-line-strong px-2 py-0.5 font-medium text-ink">
+                          <span className="rounded-full border border-line px-2 py-0.5 font-medium text-ink">
                             {NOTE_KIND_LABELS[note.kind]}
                           </span>
                           {formatDate(note.created_at)}

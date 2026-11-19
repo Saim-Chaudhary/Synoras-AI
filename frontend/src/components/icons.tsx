@@ -106,6 +106,27 @@ export const AlertIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const MailIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="m3 7 9 6 9-6" />
+  </Icon>
+);
+
+export const LockIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="5" y="11" width="14" height="9" rx="2" />
+    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+  </Icon>
+);
+
+export const UserIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 20a8 8 0 0 1 16 0" />
+  </Icon>
+);
+
 export const ArrowLeftIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M19 12H5m6-6-6 6 6 6" />
@@ -179,6 +200,26 @@ export const RefreshIcon = (p: IconProps) => (
 export const StopIcon = (p: IconProps) => (
   <Icon {...p}>
     <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
+  </Icon>
+);
+
+// Three connected dots: memory kept as a small graph.
+export const MemoryIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="6" cy="7" r="2" />
+    <circle cx="18" cy="7" r="2" />
+    <circle cx="12" cy="18" r="2" />
+    <path d="M8 7h8M7.2 8.8l3.6 7.4M16.8 8.8l-3.6 7.4" />
+  </Icon>
+);
+
+// One line splitting into two: the right model for each task.
+export const RouteIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="5" r="2" />
+    <circle cx="5" cy="19" r="2" />
+    <circle cx="19" cy="19" r="2" />
+    <path d="M12 7v4M12 11l-6 6.2M12 11l6 6.2" />
   </Icon>
 );
 

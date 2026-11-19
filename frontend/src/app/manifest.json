@@ -4,6 +4,8 @@
   "description": "An AI assistant that remembers, with project workspaces and your own documents.",
   "start_url": "/chat",
   "display": "standalone",
+  "background_color": "#f4f9f8",
+  "theme_color": "#0f766e",
   "icons": [
     {
       "src": "/icon.svg",

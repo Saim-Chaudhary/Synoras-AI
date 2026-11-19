@@ -60,7 +60,7 @@ export default function MessageItem({ message, isLastUser, isLastReply, busy, on
             rows={3}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            className="block w-full resize-y rounded-card border border-accent bg-surface px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-live/40"
+            className="block w-full resize-y rounded-card border border-accent bg-raised px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-live/40"
           />
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setEditing(false)} className={buttonClass("secondary")}>
@@ -122,7 +122,12 @@ export default function MessageItem({ message, isLastUser, isLastReply, busy, on
       )}
       {message.pending && (
         <p className="flex items-center gap-2 text-sm text-ink-muted">
-          <AnimatedMark size={22} mode="thinking" label="" />
+          {/* Thinking: the moving logo. Writing: a small coral dot that pulses (the "live point"). */}
+          {message.text ? (
+            <span aria-hidden="true" className="live-pulse ml-1.5 mr-1 inline-block size-2.5 rounded-full bg-live" />
+          ) : (
+            <AnimatedMark size={22} mode="thinking" label="" />
+          )}
           {message.notice ?? (message.text ? "Writing..." : "Thinking...")}
         </p>
       )}

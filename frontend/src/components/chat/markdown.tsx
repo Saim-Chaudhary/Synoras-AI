@@ -34,7 +34,7 @@ function CodeBlock({ node }: { node?: TreeNode }) {
   const text = code ? textOf(code).replace(/\n$/, "") : "";
   const language = code?.properties?.className?.find((name) => name.startsWith("language-"))?.slice(9);
   return (
-    <div className="overflow-hidden rounded-code border border-line-strong bg-sidebar">
+    <div className="overflow-hidden rounded-code border border-line bg-sidebar">
       <div className="flex items-center justify-between border-b border-line px-3 py-0.5">
         <span className="text-xs text-ink-muted">{language || "code"}</span>
         <CopyButton text={text} label="Copy code" size="sm" />

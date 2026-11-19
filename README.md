@@ -2,13 +2,6 @@
   <img src="docs/assets/banner.svg" alt="Synoras AI" width="100%">
 </p>
 
-<h2 align="center">🚧 Something cool is coming 🚧</h2>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/status-under%20construction-7c5cff?style=for-the-badge" alt="Status: under construction">
-  <img src="https://img.shields.io/badge/type-Final%20Year%20Project-22d3ee?style=for-the-badge" alt="Final Year Project">
-</p>
-
 <p align="center">
   <img src="https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white" alt="Next.js">
   <img src="https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB" alt="React">
@@ -37,19 +30,9 @@ Most AI chat tools forget you the moment the conversation ends. **Synoras AI** i
 
 ## Status
 
-The project is in its early build phase and is not ready to use yet. The backend is being built first and tested through FastAPI's `/docs` page. The real user interface comes at the end.
+Active development. Each feature is built together with its web screen. **Working today:** register and login, streamed chat (Stop, Regenerate, edit, search, rename, delete, model fallback), and project workspaces (task board, notes, project chats). **Not built yet:** memory, documents (GraphRAG), the agent team, PDF reports, admin. The Documents tab is a placeholder. The build order and details are in [`docs/progress.md`](docs/progress.md).
 
-| Part | State |
-|---|---|
-| Backend skeleton (FastAPI, settings, health check, tests) | Done |
-| Model layer: complexity classifier, tier router, Ollama / Groq / OpenRouter client | Built, offline tests pass; real key test in progress |
-| Database (PostgreSQL 18 + pgvector in Docker), migrations (Alembic), `users` table, Redis container | Done |
-| Register and login (argon2 passwords, JWT tokens, 15-minute lock after 5 wrong passwords) | Done |
-| Background jobs (Celery) | Not started |
-| Chat, memory, documents, projects, multi-agent, PDF reports, admin | Not started |
-| Web interface (Next.js): plain sample pages built beside each feature (login, register, dashboard so far) | In progress; the final design comes at the end |
-
-Details and the build order are in [`docs/progress.md`](docs/progress.md).
+The web interface has a deep teal and coral look, light and dark themes, a phone layout, and calm motion that stops when your system asks for reduced motion.
 
 ## How the model routing works
 
@@ -102,6 +85,8 @@ Open `backend/.env` in a text editor and fill in:
   uv run python -c "import secrets; print(secrets.token_urlsafe(48))"
   ```
 
+- `GROQ_MODEL` and `OPENROUTER_MODEL` (the model names to use; an empty name means that model is "not configured"). `backend/.env.example` shows the format.
+
 Leave the other lines as they are: they already match the Docker setup.
 
 ### 4. Start the database and Redis
@@ -132,13 +117,6 @@ uv run fastapi dev app/main.py
 
 Open <http://127.0.0.1:8000/docs>. Try `GET /health` and `GET /health/db` (it should say `"database": "reachable"`). The `/dev` endpoints there are temporary test tools with no login: use them only on your own machine.
 
-**Try the login on `/docs`:**
-
-1. `POST /auth/register`: click *Try it out*, change the example to a real name, email and a password of 8+ characters, then *Execute*. You get your user and an `access_token`.
-2. Copy the `access_token`, click the **Authorize** button (top right), paste it, and press *Authorize*.
-3. `GET /auth/me` now returns your account. Without a token it returns 401.
-4. `POST /auth/login` logs in again later. Five wrong passwords in a row lock the account for 15 minutes.
-
 ### 6. Start the website (frontend)
 
 Keep the backend from step 5 running, and open a **second terminal** in the project folder:
@@ -149,9 +127,7 @@ npm install        # first time only
 npm run dev
 ```
 
-Open <http://localhost:3000> (type `localhost`, not `127.0.0.1`: the backend only accepts that address). You land on the login page. Create an account, and you reach the dashboard.
-
-Things to try: a password under 8 characters, an email that is already registered, a wrong password, five wrong passwords in a row (the account locks for 15 minutes), Log out, and refreshing the dashboard (you stay logged in).
+Open <http://localhost:3000> (type `localhost`, not `127.0.0.1`: the backend only accepts that address). Create an account and you reach the chat.
 
 The website finds the backend at `http://127.0.0.1:8000`. To change that, copy `frontend/.env.example` to `frontend/.env.local`, edit it, and restart `npm run dev`.
 
@@ -202,4 +178,4 @@ The requirements and design live in [`docs/spec/`](docs/spec/) (Scope, SRS, SDD)
 
 ---
 
-<p align="center"><sub>Built as a final year project. Stay tuned. ✨</sub></p>
+<p align="center"><sub>Final year project, COMSATS Sahiwal.</sub></p>

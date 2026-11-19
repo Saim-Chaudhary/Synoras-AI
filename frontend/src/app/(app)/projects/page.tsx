@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect } from "react";
 
 import { buttonClass } from "@/components/button";
-import { FolderIcon, PlusIcon } from "@/components/icons";
+import { PlusIcon } from "@/components/icons";
+import { NoProjectsArt } from "@/components/illustrations/empty-states";
 import ProgressBar from "@/components/projects/progress-bar";
 import { useProjects } from "@/components/projects/projects-provider";
 
@@ -47,8 +48,8 @@ export default function ProjectsPage() {
         )}
 
         {status === "ready" && projects.length === 0 && (
-          <div className="flex flex-col items-center rounded-card border border-line-strong px-6 py-14 text-center">
-            <FolderIcon className="size-8 text-ink-muted" />
+          <div className="flex flex-col items-center rounded-card border border-line bg-raised px-6 py-14 text-center">
+            <NoProjectsArt className="h-28 w-auto" />
             <h2 className="mt-4 text-lg font-semibold text-ink">No projects yet</h2>
             <p className="mt-1.5 max-w-sm text-ink-muted">
               Create a project for a piece of work, such as your thesis. You get a task board, notes, and chats that know
@@ -67,7 +68,7 @@ export default function ProjectsPage() {
               <li key={project.project_id}>
                 <Link
                   href={`/projects/${project.project_id}`}
-                  className="block h-full rounded-card border border-line-strong bg-surface p-4 hover:bg-surface-hover"
+                  className="block h-full rounded-card border border-line bg-raised p-4 hover:bg-surface-hover"
                 >
                   <h2 className="truncate font-semibold text-ink">{project.title}</h2>
                   <p className="mt-1 line-clamp-2 min-h-10 text-sm text-ink-muted">

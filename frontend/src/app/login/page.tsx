@@ -5,7 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import AuthCard from "@/components/auth-card";
 import { buttonClass } from "@/components/button";
-import { AlertIcon } from "@/components/icons";
+import { AlertIcon, LockIcon, MailIcon } from "@/components/icons";
 import TextField from "@/components/text-field";
 import { ApiError } from "@/lib/api";
 import { getToken, login } from "@/lib/auth";
@@ -48,6 +48,16 @@ export default function LoginPage() {
     else focusOnComputers("email");
   }, [router]);
 
+  // Editing a field clears its error and the server's message. An error shows again only when the
+  // person leaves the field or presses Log in (decisions A29).
+  function edit(field: Field, setValue: (value: string) => void) {
+    return (value: string) => {
+      setValue(value);
+      setTouched((current) => ({ ...current, [field]: false }));
+      setFormError(null);
+    };
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
@@ -77,16 +87,25 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthCard current="/login" title="Welcome back" subtitle="Log in to continue your conversations.">
+    <AuthCard
+      title="Welcome back"
+      subtitle="Log in to continue your conversations."
+      switchPrompt="New to Synoras?"
+      switchLabel="Create an account"
+      switchHref="/register"
+      art="memory"
+    >
       <form onSubmit={handleSubmit} noValidate>
         <TextField
           id="email"
           label="Email"
           type="email"
           inputMode="email"
+          icon={<MailIcon className="size-5" />}
+          className="mt-0"
           autoComplete="email"
           value={email}
-          onChange={setEmail}
+          onChange={edit("email", setEmail)}
           onBlur={() => setTouched((t) => ({ ...t, email: true }))}
           error={errors.email}
         />
@@ -94,9 +113,10 @@ export default function LoginPage() {
           id="password"
           label="Password"
           type="password"
+          icon={<LockIcon className="size-5" />}
           autoComplete="current-password"
           value={password}
-          onChange={setPassword}
+          onChange={edit("password", setPassword)}
           onBlur={() => setTouched((t) => ({ ...t, password: true }))}
           error={errors.password}
         />

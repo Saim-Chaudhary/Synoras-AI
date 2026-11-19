@@ -1,8 +1,11 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
+
 import IconButton from "@/components/icon-button";
 import { CloseIcon } from "@/components/icons";
-import Logo from "@/components/logo";
+import { EmptyGraphArt, NoMemoriesArt } from "@/components/illustrations/empty-states";
+import { useDuration } from "@/components/motion/safe-motion";
 
 import { useShell } from "./shell-context";
 
@@ -14,12 +17,19 @@ const TABS = ["Memories", "Knowledge graph", "Sources"];
 // narrower screens it covers the right edge (with a shadow, like a drawer).
 export default function SidePanel() {
   const { panelOpen, closePanel } = useShell();
-  if (!panelOpen) return null;
+  const duration = useDuration(0.2); // 0 when the person asked for less motion
 
   return (
-    <aside
+    <AnimatePresence initial={false}>
+    {panelOpen && (
+    <motion.aside
+      key="panel"
+      initial={{ opacity: 0, x: 24 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 24 }}
+      transition={{ duration }}
       aria-label="Side panel"
-      className="fixed inset-y-0 right-0 z-30 flex w-[min(24rem,100vw)] flex-col border-l border-line bg-surface shadow-xl xl:static xl:z-auto xl:w-96 xl:shrink-0 xl:shadow-none"
+      className="fixed inset-y-0 right-0 z-30 flex w-[min(24rem,100vw)] flex-col border-l border-line bg-raised shadow-xl xl:static xl:z-auto xl:w-96 xl:shrink-0 xl:shadow-none"
     >
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-line pl-4 pr-2">
         <h2 className="text-sm font-medium text-ink">Side panel</h2>
@@ -41,13 +51,20 @@ export default function SidePanel() {
           </button>
         ))}
       </div>
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
-        <Logo variant="mark" height={36} />
-        <p className="font-medium text-ink">Nothing open yet</p>
-        <p className="text-sm text-ink-muted">
-          The knowledge graph, memory conflicts and source references will open here, beside your chat.
-        </p>
+      <div className="flex flex-1 flex-col justify-center gap-8 overflow-y-auto px-8 py-6 text-center">
+        <section aria-label="Memories" className="flex flex-col items-center gap-2">
+          <NoMemoriesArt className="h-24 w-auto" />
+          <p className="font-medium text-ink">No memories yet</p>
+          <p className="text-sm text-ink-muted">What Synoras remembers about you will show here, with how sure it is.</p>
+        </section>
+        <section aria-label="Knowledge graph" className="flex flex-col items-center gap-2">
+          <EmptyGraphArt className="h-24 w-auto" />
+          <p className="font-medium text-ink">No knowledge graph yet</p>
+          <p className="text-sm text-ink-muted">Upload documents and the graph built from them will light up here.</p>
+        </section>
       </div>
-    </aside>
+    </motion.aside>
+    )}
+    </AnimatePresence>
   );
 }

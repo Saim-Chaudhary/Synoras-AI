@@ -50,7 +50,7 @@ export default function TextAreaField({
         onBlur={onBlur}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
-        className={`mt-1.5 block w-full resize-y rounded-control border bg-surface px-3 py-2.5 text-base leading-6 text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-live/40 ${
+        className={`mt-1.5 block w-full resize-y rounded-control border bg-raised px-3 py-2.5 text-base leading-6 text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-live/40 ${
           error ? "border-danger" : "border-line-strong"
         }`}
       />

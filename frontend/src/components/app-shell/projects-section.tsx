@@ -68,7 +68,7 @@ export default function ProjectsSection({ onNavigate }: { onNavigate?: () => voi
                 const href = `/projects/${project.project_id}`;
                 const active = pathname === href || pathname.startsWith(`${href}/`);
                 return (
-                  <li key={project.project_id} className={`relative rounded-control ${active ? "bg-accent-soft" : "hover:bg-surface-hover"}`}>
+                  <li key={project.project_id} className={`relative rounded-control ${active ? "bg-live-soft" : "hover:bg-surface-hover"}`}>
                     {active && <span aria-hidden="true" className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-live" />}
                     <Link
                       href={href}

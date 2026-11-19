@@ -5,94 +5,114 @@
    Components never use a hex code or a Tailwind palette color (no bg-gray-100,
    text-red-700, ...). They use the meaning-based names defined below
    (bg-surface, text-ink, border-line, bg-accent, ...), so changing a color or a
-   whole theme means editing this file only (decisions A21, A25).
+   whole theme means editing this file only (decisions A21, A25, A28).
    ============================================================================= */
 
 /* "dark:" utilities (only used for the two logo variants) follow the data-theme
    attribute that the theme script sets on <html> before the first paint. */
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
-/* 1. Brand colors, taken from the logo. Defined once, here. */
+/* 1. Brand colors, taken from the logo ("Deep teal and coral", decisions A28). Defined once, here. */
 :root {
-  --brand-navy: #14213d;
-  --brand-amber: #e9a23b;
-  --on-brand: #fffdf8; /* text on a navy brand panel (the same in both themes) */
+  --brand-teal: #0f766e; /* the logo dots on a light background */
+  --brand-coral: #f2704a; /* the logo's one coral point on a light background */
+  --coral-on-dark: #ff8a65; /* the same coral on a dark background */
+  --panel: #0b1f1d; /* the deep teal-black brand panel: dark in BOTH themes */
+  --on-panel: #e4f1ef; /* text and dots on that panel */
+  --panel-live: var(--coral-on-dark); /* the coral point on that panel */
+  --panel-teal: #2dd4bf; /* the bright teal for fresh dots and lines on that panel */
 }
 
-/* 2. Light theme: warm paper. Navy is the accent (buttons, links). Amber is the "live point":
-   it marks what is active (current chat, focus glow, streaming, Stop). Never use amber for
-   text on light backgrounds. */
+/* 2. Light theme. Teal is the accent (buttons, links, progress). Coral is the "live point":
+   it marks what is active or selected (current chat, focus, streaming, Stop). Never use coral for
+   text on a light background. Every pair below was checked with the contrast script. */
 :root {
   color-scheme: light;
 
-  --canvas: #faf8f4; /* page and chat background */
-  --sidebar: #f3efe8; /* sidebar and panels */
-  --surface: #fffefb; /* inputs, cards, side panel */
-  --surface-hover: #ebe6dc; /* hover on list items and buttons */
-  --line: #e3ddd1; /* dividers (decoration only) */
-  --line-strong: #8a8373; /* edges of controls: inputs, composer, secondary buttons (3:1) */
+  --canvas: #f4f9f8; /* page and chat background */
+  --sidebar: #eaf3f1; /* sidebar and panels */
+  --surface: #dfeeeb; /* tinted panels and hovers */
+  --raised: #fbfefd; /* fields and cards: lighter than the page, so they look crisp (decisions A28) */
+  --surface-hover: #d2e6e2; /* hover on list items and buttons */
+  --line: #c3dad5; /* dividers (decoration only) */
+  --line-strong: #6a8782; /* edges of controls: inputs, composer, secondary buttons (3:1) */
 
-  --ink: #26231f; /* main text */
-  --ink-muted: #6a6458; /* secondary text */
-  --ink-faint: #6f695c; /* placeholders, small notes (4.5:1 on every background) */
+  --ink: #0e1b1a; /* main text */
+  --ink-muted: #3f5c57; /* secondary text (4.5:1 on every background) */
+  --ink-faint: #4b6964; /* placeholders, small notes (4.5:1 on every background) */
 
-  --accent: var(--brand-navy); /* primary buttons, links */
-  --accent-hover: color-mix(in srgb, var(--brand-navy) 86%, white);
-  --accent-ink: #fffdf8; /* text on the accent color */
-  --accent-soft: color-mix(in srgb, var(--brand-navy) 6%, var(--canvas)); /* selected row, quiet fills */
-  --live: var(--brand-amber); /* the live point: active marker, caret, Stop, focus glow */
-  --highlight: var(--brand-amber); /* small marks: avatar */
-  --highlight-soft: color-mix(in srgb, var(--brand-amber) 20%, var(--canvas));
-  --focus: var(--brand-navy);
-  --mark-dot: var(--brand-navy); /* the dots and the name in the animated logo */
+  --accent: var(--brand-teal); /* the primary color: buttons, links, progress */
+  --accent-hover: #0b5e58;
+  --accent-ink: #ffffff; /* text on the accent color */
+  --accent-soft: color-mix(in srgb, var(--accent) 10%, var(--canvas)); /* quiet fills */
 
-  --danger: #b3261e;
-  --danger-soft: #fceeeb;
-  --danger-line: #efc3bd;
+  --live: var(--brand-coral); /* the live point: marker, streaming dot, caret, Stop button */
+  --live-ink: #0e1b1a; /* text and icons on the coral */
+  --live-soft: color-mix(in srgb, var(--live) 14%, var(--canvas)); /* selected row */
+  --focus: #d2472a; /* focus ring: a darker coral, so it reaches 3:1 on the light backgrounds */
+  --highlight: var(--live); /* small marks: avatar */
+  --highlight-soft: color-mix(in srgb, var(--live) 18%, var(--canvas));
+  --mark-dot: var(--brand-teal); /* the dots and the name in the animated logo */
+
+  /* Danger is a crimson (rose), clearly not the orange-red coral; errors also always have an icon and text. */
+  --danger: #b4233a;
+  --danger-soft: #fbe8eb;
+  --danger-line: #edb1bc;
+  --success: #22693a;
+  --success-soft: #e3f3e6;
+  --success-line: #a9d7b3;
 }
 
-/* 3. Dark theme: navy-black, so the brand navy is present in dark mode too. Amber becomes the
-   accent (navy is too dark on a dark background). */
+/* 3. Dark theme: deep teal-black. The primary becomes a bright teal and the coral a lighter coral. */
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --canvas: #12151c;
-  --sidebar: #0e1117;
-  --surface: #1a1e28;
-  --surface-hover: #232836;
-  --line: #2a2f3c;
-  --line-strong: #6b7285;
+  --canvas: #091413;
+  --sidebar: #060f0e;
+  --surface: #102523;
+  --raised: #132b28;
+  --surface-hover: #173330;
+  --line: #1c3633;
+  --line-strong: #4f7a74;
 
-  --ink: #ece9e1;
-  --ink-muted: #a6abb8;
-  --ink-faint: #8f93a0;
+  --ink: #e4f1ef;
+  --ink-muted: #a3c2bd;
+  --ink-faint: #86a8a2;
 
-  --accent: var(--brand-amber);
-  --accent-hover: color-mix(in srgb, var(--brand-amber) 86%, white);
-  --accent-ink: var(--brand-navy);
-  --accent-soft: color-mix(in srgb, var(--brand-amber) 14%, var(--canvas));
-  --live: var(--brand-amber);
-  --highlight: var(--brand-amber);
-  --highlight-soft: color-mix(in srgb, var(--brand-amber) 20%, var(--canvas));
-  --focus: var(--brand-amber);
-  --mark-dot: var(--on-brand);
+  --accent: #2dd4bf;
+  --accent-hover: #5ee3d1;
+  --accent-ink: #06201d;
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, var(--canvas));
 
-  --danger: #f2a29a;
-  --danger-soft: #3a1f1c;
-  --danger-line: #5e2e29;
+  --live: var(--coral-on-dark);
+  --live-ink: #06201d;
+  --live-soft: color-mix(in srgb, var(--live) 16%, var(--canvas));
+  --focus: var(--coral-on-dark);
+  --highlight: var(--live);
+  --highlight-soft: color-mix(in srgb, var(--live) 20%, var(--canvas));
+  --mark-dot: var(--on-panel);
+
+  --danger: #ff8fa3;
+  --danger-soft: #35151d;
+  --danger-line: #5e2a36;
+  --success: #6fd08c;
+  --success-soft: #12301c;
+  --success-line: #25502f;
 }
 
 /* 4. Tailwind class names for the tokens above: bg-canvas, text-ink, border-line-strong, ...
    Shape scale (one rule, never broken): controls 10px, cards and bubbles 16px, code blocks 12px,
    composer 24px, pills and round buttons fully round. */
 @theme inline {
-  --color-brand-navy: var(--brand-navy);
-  --color-brand-amber: var(--brand-amber);
-  --color-on-brand: var(--on-brand);
+  --color-panel: var(--panel);
+  --color-on-panel: var(--on-panel);
+  --color-panel-live: var(--panel-live);
+  --color-panel-teal: var(--panel-teal);
 
   --color-canvas: var(--canvas);
   --color-sidebar: var(--sidebar);
   --color-surface: var(--surface);
+  --color-raised: var(--raised);
   --color-surface-hover: var(--surface-hover);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
@@ -106,12 +126,17 @@
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
   --color-live: var(--live);
+  --color-live-ink: var(--live-ink);
+  --color-live-soft: var(--live-soft);
   --color-highlight: var(--highlight);
   --color-highlight-soft: var(--highlight-soft);
 
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-danger-line: var(--danger-line);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-line: var(--success-line);
 
   --radius-control: 0.625rem;
   --radius-card: 1rem;
@@ -223,5 +248,119 @@
   [data-mark] .mark-dot,
   [data-mark] .mark-center {
     animation: none;
+  }
+}
+
+/* 7. Motion for the illustrations and the live dot (decisions A29). Everything here is short or slow,
+   and everything stops under prefers-reduced-motion (the finished picture is shown at once). */
+@keyframes scene-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scene-ripple {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+@keyframes scene-flow {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+@keyframes scene-travel {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes scene-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.35);
+  }
+}
+
+/* A group of the picture that fades in at its own stage: style="--stage: 2" (0 = first). */
+.scene-stage {
+  animation: scene-in 0.6s ease-out both;
+  animation-delay: calc(var(--stage, 0) * 0.4s);
+}
+
+.scene-ripple {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: scene-ripple 3s ease-out infinite;
+  animation-delay: calc(var(--stage, 0) * 0.4s + 1s);
+}
+
+.scene-flow {
+  stroke-dasharray: 4 10;
+  animation: scene-flow 2.4s linear infinite;
+}
+
+/* A small light that travels along a path (set offset-path inline). */
+.scene-travel {
+  offset-rotate: 0deg;
+  animation: scene-travel var(--travel, 4s) ease-in-out infinite;
+  animation-delay: var(--travel-delay, 0s);
+}
+
+.scene-caret {
+  animation: scene-blink 1.1s steps(1) infinite;
+}
+
+.live-pulse {
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-stage,
+  .scene-flow,
+  .scene-caret,
+  .live-pulse {
+    animation: none;
+  }
+  .scene-ripple,
+  .scene-travel {
+    display: none;
   }
 }

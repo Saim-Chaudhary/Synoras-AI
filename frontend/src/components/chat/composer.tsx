@@ -36,7 +36,7 @@ export default function Composer({ value, onChange }: Props) {
     <div>
       <form
         onSubmit={submit}
-        className="rounded-composer border border-line-strong bg-surface p-3 focus-within:border-accent focus-within:ring-2 focus-within:ring-live/40"
+        className="rounded-composer border border-line-strong bg-raised p-3 focus-within:border-accent focus-within:ring-2 focus-within:ring-live/40"
       >
         <label htmlFor="message" className="sr-only">
           Message Synoras AI
@@ -59,7 +59,7 @@ export default function Composer({ value, onChange }: Props) {
               onClick={stop}
               aria-label="Stop generating"
               title="Stop generating"
-              className="ml-auto inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-live text-brand-navy hover:opacity-90"
+              className="ml-auto inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-live text-live-ink hover:opacity-90"
             >
               <StopIcon />
             </button>

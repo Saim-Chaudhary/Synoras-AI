@@ -88,7 +88,7 @@ export default function ProjectChatsPage() {
         )}
 
         {status === "ready" && chats.length === 0 && (
-          <div className="rounded-card border border-line-strong px-6 py-10 text-center">
+          <div className="rounded-card border border-line bg-raised px-6 py-10 text-center">
             <h3 className="font-semibold text-ink">No chats in this project yet</h3>
             <p className="mx-auto mt-1.5 max-w-md text-ink-muted">
               Start one and the assistant will know this project&apos;s name and description.
@@ -97,7 +97,7 @@ export default function ProjectChatsPage() {
         )}
 
         {status === "ready" && chats.length > 0 && (
-          <ul className="divide-y divide-line rounded-card border border-line-strong bg-surface">
+          <ul className="divide-y divide-line rounded-card border border-line bg-raised">
             {chats.map((chat) => (
               <li key={chat.chat_id} className="p-1">
                 {deletingId === chat.chat_id ? (

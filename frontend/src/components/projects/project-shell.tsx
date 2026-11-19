@@ -118,7 +118,7 @@ function OpenProject({ projectId, children }: { projectId: number; children: Rea
         </Link>
 
         {editing ? (
-          <div className="mt-2 max-w-xl rounded-card border border-line-strong bg-surface p-4">
+          <div className="mt-2 max-w-xl rounded-card border border-line bg-raised p-4">
             <h1 className="mb-4 text-lg font-semibold text-ink">Edit project</h1>
             <ProjectForm
               autoFocus
@@ -208,7 +208,7 @@ function OpenProject({ projectId, children }: { projectId: number; children: Rea
           {/* The knowledge base arrives with the documents step: shown, but not usable yet. */}
           <span aria-disabled="true" className={`${TAB_CLASS} cursor-not-allowed border-transparent text-ink-faint`}>
             Documents
-            <span className="rounded-full border border-line-strong px-2 py-0.5 text-xs font-normal">Soon</span>
+            <span className="rounded-full border border-line px-2 py-0.5 text-xs font-normal">Soon</span>
           </span>
         </nav>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -16,6 +17,7 @@ import {
   SearchIcon,
 } from "@/components/icons";
 import Logo from "@/components/logo";
+import { useDuration } from "@/components/motion/safe-motion";
 
 import ChatHistory from "./chat-history";
 import ProjectsSection from "./projects-section";
@@ -88,7 +90,7 @@ function SidebarContent({ topRight, onNavigate }: { topRight: ReactNode; onNavig
             placeholder="Search chats"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="h-10 w-full rounded-control border border-line-strong bg-surface pl-9 pr-3 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-live/40"
+            className="h-10 w-full rounded-control border border-line-strong bg-raised pl-9 pr-3 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-live/40"
           />
         </div>
       </div>
@@ -117,6 +119,7 @@ export default function Sidebar() {
   const { user, logout, sidebarCollapsed, toggleSidebar, drawerOpen, closeDrawer } = useShell();
   const { newChat } = useChat();
   const closeButton = useRef<HTMLButtonElement>(null);
+  const duration = useDuration(0.18); // 0 when the person asked for less motion
 
   // The phone drawer: Escape closes it, and the cursor starts on its close button.
   useEffect(() => {
@@ -130,8 +133,14 @@ export default function Sidebar() {
   return (
     <>
       {/* Docked sidebar, from 768 px wide. Collapsed: a narrow strip with only the icons. */}
+      <AnimatePresence initial={false} mode="wait">
       {sidebarCollapsed ? (
-        <aside
+        <motion.aside
+          key="collapsed"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -10 }}
+          transition={{ duration }}
           aria-label="Sidebar"
           className="hidden w-14 shrink-0 flex-col items-center gap-2 border-r border-line bg-sidebar py-3 md:flex"
         >
@@ -148,9 +157,17 @@ export default function Sidebar() {
               <LogOutIcon />
             </IconButton>
           </div>
-        </aside>
+        </motion.aside>
       ) : (
-        <aside aria-label="Sidebar" className="hidden w-70 shrink-0 flex-col border-r border-line bg-sidebar md:flex">
+        <motion.aside
+          key="full"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -10 }}
+          transition={{ duration }}
+          aria-label="Sidebar"
+          className="hidden w-70 shrink-0 flex-col border-r border-line bg-sidebar md:flex"
+        >
           <SidebarContent
             topRight={
               <IconButton label="Collapse sidebar" onClick={toggleSidebar}>
@@ -158,14 +175,27 @@ export default function Sidebar() {
               </IconButton>
             }
           />
-        </aside>
+        </motion.aside>
       )}
+      </AnimatePresence>
 
       {/* Phone drawer: the same sidebar, sliding in over the chat. */}
+      <AnimatePresence>
       {drawerOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
-          <div aria-hidden="true" className="absolute inset-0 bg-brand-navy/50" onClick={closeDrawer} />
-          <aside
+        <motion.div
+          key="drawer"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration }}
+          className="fixed inset-0 z-40 md:hidden"
+        >
+          <div aria-hidden="true" className="absolute inset-0 bg-panel/60" onClick={closeDrawer} />
+          <motion.aside
+            initial={{ x: -32 }}
+            animate={{ x: 0 }}
+            exit={{ x: -32 }}
+            transition={{ duration }}
             aria-label="Sidebar"
             className="absolute inset-y-0 left-0 flex w-[min(20rem,88vw)] flex-col border-r border-line bg-sidebar shadow-xl"
           >
@@ -184,9 +214,10 @@ export default function Sidebar() {
                 </button>
               }
             />
-          </aside>
-        </div>
+          </motion.aside>
+        </motion.div>
       )}
+      </AnimatePresence>
     </>
   );
 }

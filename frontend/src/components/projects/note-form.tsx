@@ -64,7 +64,7 @@ export default function NoteForm({
       onSubmit={handleSubmit}
       onKeyDown={(event) => event.key === "Escape" && onCancel()}
       noValidate
-      className="rounded-card border border-accent bg-surface p-4"
+      className="rounded-card border border-accent bg-raised p-4"
     >
       <div>
         <label htmlFor={`${id}-kind`} className="block text-sm font-medium text-ink">
@@ -74,7 +74,7 @@ export default function NoteForm({
           id={`${id}-kind`}
           value={kind}
           onChange={(event) => setKind(event.target.value as NoteKind)}
-          className="mt-1.5 block h-12 w-full rounded-control border border-line-strong bg-surface px-3 text-base text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-live/40 sm:w-60"
+          className="mt-1.5 block h-12 w-full rounded-control border border-line-strong bg-raised px-3 text-base text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-live/40 sm:w-60"
         >
           {(Object.keys(NOTE_KIND_LABELS) as NoteKind[]).map((value) => (
             <option key={value} value={value}>

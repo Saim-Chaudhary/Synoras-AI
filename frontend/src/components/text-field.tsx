@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { AlertIcon, CheckIcon, EyeIcon, EyeOffIcon } from "@/components/icons";
 
@@ -29,6 +29,7 @@ type Props = {
   requirements?: Requirement[]; // a checklist, for example for the password rules
   error?: string; // when set, the input is marked wrong and the message appears below it
   className?: string; // spacing above the field (the default suits a form with many fields)
+  icon?: ReactNode; // a small picture at the left end (mail, lock, ...): it helps to recognise the field, it is decoration
 };
 
 export default function TextField({
@@ -43,12 +44,13 @@ export default function TextField({
   hint,
   requirements,
   error,
-  className = "mt-5",
+  className = "mt-5 [@media(max-height:720px)]:mt-3.5",
+  icon,
 }: Props) {
   const [shown, setShown] = useState(false); // password visible?
   const [capsLock, setCapsLock] = useState(false);
   const isPassword = type === "password";
-  const describedBy = [error ? `${id}-error` : null, hint && !error ? `${id}-hint` : null, requirements ? `${id}-rules` : null]
+  const describedBy = [error ? `${id}-error` : null, hint && !error ? `${id}-hint` : null, requirements && !error ? `${id}-rules` : null]
     .filter(Boolean)
     .join(" ");
 
@@ -64,6 +66,11 @@ export default function TextField({
         {label}
       </label>
       <div className="relative mt-1.5">
+        {icon && (
+          <span aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted">
+            {icon}
+          </span>
+        )}
         <input
           id={id}
           name={id}
@@ -82,9 +89,9 @@ export default function TextField({
           onKeyUp={checkCapsLock}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy || undefined}
-          className={`block h-12 w-full rounded-control border bg-surface px-3 text-base text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-live/40 ${
-            isPassword ? "pr-12" : ""
-          } ${error ? "border-danger" : "border-line-strong"}`}
+          className={`block h-12 w-full rounded-control border bg-raised text-base text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-live/40 ${
+            icon ? "pl-11" : "pl-3"
+          } ${isPassword ? "pr-12" : "pr-3"} ${error ? "border-danger" : "border-line-strong"}`}
         />
         {isPassword && (
           <button
@@ -118,7 +125,7 @@ export default function TextField({
           {hint}
         </p>
       )}
-      {requirements && (
+      {requirements && !error && (
         <ul id={`${id}-rules`} className="mt-2 space-y-1 text-sm">
           {requirements.map((rule) => (
             <li key={rule.label} className={`flex items-center gap-1.5 ${rule.met ? "text-ink" : "text-ink-muted"}`}>

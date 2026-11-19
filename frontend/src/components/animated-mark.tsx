@@ -7,7 +7,7 @@
 //   mode "thinking" the same drift, faster and wider (something is loading)
 //
 // The animation itself lives in globals.css and is switched off for people who prefer reduced
-// motion. Colors come from tokens (--mark-dot, --brand-amber), never from hex codes here.
+// motion. Colors come from tokens (--mark-dot, --live), never from hex codes here.
 
 import type { CSSProperties } from "react";
 
@@ -71,7 +71,7 @@ type MarkProps = {
 };
 
 export function AnimatedMark({ size, mode = "still", tone = "auto", label = "Synoras AI", className }: MarkProps) {
-  const style = (tone === "onDark" ? { "--mark-dot": "var(--on-brand)" } : undefined) as CSSProperties | undefined;
+  const style = (tone === "onDark" ? { "--mark-dot": "var(--on-panel)", "--mark-live": "var(--panel-live)" } : undefined) as CSSProperties | undefined;
 
   return (
     <svg
@@ -96,7 +96,7 @@ export function AnimatedMark({ size, mode = "still", tone = "auto", label = "Syn
               cy={cy}
               r={r}
               className={index === 0 ? "mark-center" : undefined}
-              style={{ fill: index === 0 ? "var(--brand-amber)" : "var(--mark-dot)", opacity }}
+              style={{ fill: index === 0 ? "var(--mark-live, var(--live))" : "var(--mark-dot)", opacity }}
             />
           </g>
         );
@@ -116,13 +116,13 @@ export function AnimatedLogo({
   mode?: MarkMode;
   tone?: "auto" | "onDark";
 }) {
-  const style = (tone === "onDark" ? { "--mark-dot": "var(--on-brand)" } : undefined) as CSSProperties | undefined;
+  const style = (tone === "onDark" ? { "--mark-dot": "var(--on-panel)", "--mark-live": "var(--panel-live)" } : undefined) as CSSProperties | undefined;
   return (
     <span className="inline-flex items-center" style={{ gap: size * 0.11, ...style }}>
       <AnimatedMark size={size} mode={mode} tone={tone} label="" />
       <span
         className="font-semibold leading-none"
-        style={{ fontSize: size * 0.54, letterSpacing: size * 0.007, color: "var(--mark-dot)" }}
+        style={{ fontSize: size * 0.54, letterSpacing: size * 0.007, color: tone === "onDark" ? "var(--on-panel)" : "var(--ink)" }}
       >
         Synoras
       </span>

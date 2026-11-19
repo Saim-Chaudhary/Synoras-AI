@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { buttonClass } from "@/components/button";
+import { Appear } from "@/components/motion/safe-motion";
 
 import { useChat } from "./chat-provider";
 import Composer from "./composer";
@@ -72,15 +73,16 @@ export default function ChatScreen() {
     content = (
       <div className="space-y-8 py-8">
         {messages.map((message, index) => (
-          <MessageItem
-            key={message.key}
-            message={message}
-            isLastUser={index === lastUser}
-            isLastReply={index === lastReply}
-            busy={busy}
-            onEdit={(text) => void editLast(text)}
-            onRegenerate={() => void regenerate()}
-          />
+          <Appear key={message.key} appear={phase === "streaming"}>
+            <MessageItem
+              message={message}
+              isLastUser={index === lastUser}
+              isLastReply={index === lastReply}
+              busy={busy}
+              onEdit={(text) => void editLast(text)}
+              onRegenerate={() => void regenerate()}
+            />
+          </Appear>
         ))}
       </div>
     );

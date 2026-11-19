@@ -5,7 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import AuthCard from "@/components/auth-card";
 import { buttonClass } from "@/components/button";
-import { AlertIcon } from "@/components/icons";
+import { AlertIcon, LockIcon, MailIcon, UserIcon } from "@/components/icons";
 import TextField from "@/components/text-field";
 import { ApiError } from "@/lib/api";
 import { getToken, register } from "@/lib/auth";
@@ -47,11 +47,14 @@ export default function RegisterPage() {
     else focusOnComputers("name");
   }, [router]);
 
-  // Editing a field clears the server's complaint about it.
+  // Editing a field clears every complaint about it (ours and the server's): an error shows
+  // again only when the person leaves the field or presses the button (decisions A29).
   function edit(field: Field, setValue: (value: string) => void) {
     return (value: string) => {
       setValue(value);
+      setTouched((current) => ({ ...current, [field]: false }));
       setServerErrors((current) => ({ ...current, [field]: undefined }));
+      setFormError(null);
     };
   }
 
@@ -101,11 +104,20 @@ export default function RegisterPage() {
   }
 
   return (
-    <AuthCard current="/register" title="Create your account" subtitle="It takes a minute. No card needed.">
+    <AuthCard
+      title="Create your account"
+      subtitle="It takes a minute. No card needed."
+      switchPrompt="Already have an account?"
+      switchLabel="Log in"
+      switchHref="/login"
+      art="routing"
+    >
       <form onSubmit={handleSubmit} noValidate>
         <TextField
           id="name"
           label="Name"
+          icon={<UserIcon className="size-5" />}
+          className="mt-0"
           autoComplete="name"
           value={name}
           onChange={edit("name", setName)}
@@ -117,6 +129,7 @@ export default function RegisterPage() {
           label="Email"
           type="email"
           inputMode="email"
+          icon={<MailIcon className="size-5" />}
           autoComplete="email"
           value={email}
           onChange={edit("email", setEmail)}
@@ -127,6 +140,7 @@ export default function RegisterPage() {
           id="password"
           label="Password"
           type="password"
+          icon={<LockIcon className="size-5" />}
           autoComplete="new-password"
           value={password}
           onChange={edit("password", setPassword)}

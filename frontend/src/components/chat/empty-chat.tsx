@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 
-import { AnimatedMark } from "@/components/animated-mark";
 import { useShell } from "@/components/app-shell/shell-context";
+import { EmptyChatArt } from "@/components/illustrations/empty-states";
+import { Greeting } from "@/components/motion/safe-motion";
 
 function greetingFor(hour: number): string {
   if (hour < 12) return "Good morning";
@@ -18,7 +19,7 @@ const STARTERS = [
   "Write a short code example and explain it",
 ];
 
-// What an empty chat shows: the mark, a greeting with the user's first name, and a few ideas.
+// What an empty chat shows: a small picture, a greeting with the user's first name, and a few ideas.
 export default function EmptyChat({ onPick }: { onPick: (text: string) => void }) {
   const { user } = useShell();
   const [greeting] = useState(() => greetingFor(new Date().getHours()));
@@ -26,10 +27,8 @@ export default function EmptyChat({ onPick }: { onPick: (text: string) => void }
 
   return (
     <div className="flex flex-col items-center px-2 text-center">
-      <AnimatedMark size={52} mode="ambient" />
-      <h1 className="mt-6 text-3xl font-semibold leading-9 tracking-tight text-ink">
-        {greeting}, {firstName}
-      </h1>
+      <EmptyChatArt className="h-28 w-auto" />
+      <Greeting text={`${greeting}, ${firstName}`} className="mt-6 text-3xl font-semibold leading-9 tracking-tight text-ink" />
       <p className="mt-2 text-ink-muted">How can I help you today?</p>
       <ul className="mt-8 flex flex-wrap justify-center gap-2">
         {STARTERS.map((text) => (
@@ -37,7 +36,7 @@ export default function EmptyChat({ onPick }: { onPick: (text: string) => void }
             <button
               type="button"
               onClick={() => onPick(text)}
-              className="min-h-10 rounded-full border border-line-strong bg-surface px-4 py-2 text-sm text-ink hover:bg-surface-hover"
+              className="min-h-10 rounded-full border border-line-strong bg-raised px-4 py-2 text-sm text-ink hover:bg-surface-hover"
             >
               {text}
             </button>

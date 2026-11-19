@@ -8,6 +8,7 @@ import { useCallback, useState } from "react";
 
 import { buttonClass } from "@/components/button";
 import ConfirmBox from "@/components/confirm-box";
+import { NoTasksArt } from "@/components/illustrations/empty-states";
 import { AlertIcon, ArrowLeftIcon, ArrowRightIcon, CalendarIcon, PencilIcon, PlusIcon, TrashIcon } from "@/components/icons";
 import { useProject } from "@/components/projects/project-context";
 import TaskForm from "@/components/projects/task-form";
@@ -121,10 +122,10 @@ export default function TasksPage() {
           const previous = COLUMNS[index - 1];
           const next = COLUMNS[index + 1];
           return (
-            <section key={column} aria-labelledby={`column-${column}`} className="rounded-card border border-line-strong bg-sidebar p-3">
+            <section key={column} aria-labelledby={`column-${column}`} className="rounded-card border border-line bg-sidebar p-3">
               <h3 id={`column-${column}`} className="flex items-center justify-between px-1 pb-3 text-sm font-semibold text-ink">
                 {STATUS_LABELS[column]}
-                <span className="rounded-full border border-line-strong px-2 py-0.5 text-xs font-normal text-ink-muted">
+                <span className="rounded-full border border-line px-2 py-0.5 text-xs font-normal text-ink-muted">
                   {inColumn.length}
                 </span>
               </h3>
@@ -160,7 +161,7 @@ export default function TasksPage() {
                         onCancel={() => setDeletingId(null)}
                       />
                     ) : (
-                      <article className="rounded-card border border-line-strong bg-surface p-3">
+                      <article className="rounded-card border border-line bg-raised p-3">
                         <h4 className="break-words font-medium text-ink">{task.title}</h4>
                         {task.description && (
                           <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words text-sm text-ink-muted">{task.description}</p>
@@ -233,9 +234,12 @@ export default function TasksPage() {
               </ul>
 
               {inColumn.length === 0 && !(column === "todo" && adding) && (
-                <p className="px-1 py-2 text-sm text-ink-muted">
-                  {column === "todo" && tasks.length === 0 ? "No tasks yet. Add the first one below." : "No tasks here."}
-                </p>
+                <div className="flex flex-col items-center px-1 py-2 text-center">
+                  {column === "todo" && tasks.length === 0 && <NoTasksArt className="mb-2 h-24 w-auto" />}
+                  <p className="text-sm text-ink-muted">
+                    {column === "todo" && tasks.length === 0 ? "No tasks yet. Add the first one below." : "No tasks here."}
+                  </p>
+                </div>
               )}
 
               {column === "todo" && (

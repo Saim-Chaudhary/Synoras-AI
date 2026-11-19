@@ -71,7 +71,7 @@ function ChatRow({ chat, active, onNavigate }: { chat: ChatSummary; active: bool
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => event.key === "Escape" && setMode("view")}
             onBlur={() => setMode("view")}
-            className="h-10 w-full rounded-control border border-accent bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-live/40"
+            className="h-10 w-full rounded-control border border-accent bg-raised px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-live/40"
           />
         </form>
         {error && (
@@ -101,7 +101,7 @@ function ChatRow({ chat, active, onNavigate }: { chat: ChatSummary; active: bool
 
   return (
     <li
-      className={`group relative flex items-center rounded-control ${active ? "bg-accent-soft" : "hover:bg-surface-hover"}`}
+      className={`group relative flex items-center rounded-control ${active ? "bg-live-soft" : "hover:bg-surface-hover"}`}
       onBlur={closeMenuOnBlur}
       onKeyDown={closeMenuOnEscape}
     >
@@ -129,7 +129,7 @@ function ChatRow({ chat, active, onNavigate }: { chat: ChatSummary; active: bool
         <div
           role="menu"
           aria-label={`Options for ${chat.title}`}
-          className="absolute right-1 top-full z-20 mt-1 w-40 rounded-card border border-line-strong bg-surface p-1 shadow-lg"
+          className="absolute right-1 top-full z-20 mt-1 w-40 rounded-card border border-line bg-raised p-1 shadow-lg"
         >
           <button
             type="button"

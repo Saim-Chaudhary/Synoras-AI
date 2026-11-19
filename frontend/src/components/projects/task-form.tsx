@@ -65,7 +65,7 @@ export default function TaskForm({
       onSubmit={handleSubmit}
       onKeyDown={(event) => event.key === "Escape" && onCancel()}
       noValidate
-      className="rounded-card border border-accent bg-surface p-3"
+      className="rounded-card border border-accent bg-raised p-3"
     >
       <TextField
         id={titleId}
