@@ -10,6 +10,11 @@ export function checkName(value: string): string | undefined {
   return value.trim() ? undefined : "Enter your name.";
 }
 
+// A title that must not be empty (a project, a task, a note). `what` is how it is named in the message.
+export function checkTitle(value: string, what: string): string | undefined {
+  return value.trim() ? undefined : `Enter a ${what}.`;
+}
+
 export function checkEmail(value: string): string | undefined {
   const email = value.trim();
   if (!email) return "Enter your email address.";

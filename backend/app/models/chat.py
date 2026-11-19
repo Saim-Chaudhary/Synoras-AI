@@ -2,7 +2,7 @@
 
 Where this differs from the SDD data dictionary (decisions A23):
   chats.updated_at      new: the time of the last message, so the newest chat is listed first
-  chats.project_id      has no foreign key yet: the projects table comes with the Projects step
+  chats.project_id      a foreign key to projects since the Projects step (decisions A27)
   subtasks.message_id   points to the REPLY (assistant message), not the request
   subtasks.kind/tier/note/created_at   new: reply or title, the tier used, fallback notes, and a date
 """
@@ -29,12 +29,16 @@ DEFAULT_TITLE = "New chat"
 
 class Chat(Base):
     __tablename__ = "chats"
-    __table_args__ = (Index("ix_chats_user_id_updated_at", "user_id", "updated_at"),)
+    __table_args__ = (
+        Index("ix_chats_user_id_updated_at", "user_id", "updated_at"),
+        Index("ix_chats_project_id", "project_id"),
+    )
 
     chat_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     # Every query on this table filters by user_id: a user only ever sees their own chats (BR-1).
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id", ondelete="CASCADE"))
-    project_id: Mapped[int | None] = mapped_column(Integer)  # foreign key added with the Projects step
+    # Empty for a personal chat. Deleting the project deletes its chats too (BR-13, decisions A27).
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.project_id", ondelete="CASCADE"))
     title: Mapped[str] = mapped_column(String(150), server_default=DEFAULT_TITLE)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

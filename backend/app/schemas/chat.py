@@ -19,10 +19,18 @@ class ChatRename(BaseModel):
     title: Title
 
 
+class ProjectRef(BaseModel):
+    """Which project a chat belongs to (shown in the chat's header)."""
+
+    project_id: int
+    title: str
+
+
 class ChatOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     chat_id: int
+    project_id: int | None = None  # empty for a personal chat
     title: str
     created_at: datetime
     updated_at: datetime
@@ -49,6 +57,7 @@ class MessageOut(BaseModel):
 
 
 class ChatDetail(ChatOut):
+    project: ProjectRef | None = None
     messages: list[MessageOut]
 
 

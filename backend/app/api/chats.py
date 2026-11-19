@@ -4,6 +4,7 @@ Every endpoint needs a login (get_current_user) and only sees the user's own cha
 """
 
 from collections.abc import AsyncIterator
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.sse import EventSourceResponse, ServerSentEvent
@@ -12,8 +13,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.config import Settings, get_settings
 from app.db.session import get_db, get_session_factory
+from app.models.project import Project
 from app.models.user import User
-from app.schemas.chat import ChatCreate, ChatDetail, ChatOut, ChatRename, SendMessage
+from app.schemas.chat import ChatCreate, ChatDetail, ChatOut, ChatRename, ProjectRef, SendMessage
 from app.services import chat_service
 from app.services.chat_service import ChatError, Turn
 from app.services.chat_stream import SessionFactory, stream_reply
@@ -41,11 +43,15 @@ def create_chat(
 @router.get("", response_model=list[ChatOut])
 def list_chats(
     q: str | None = Query(default=None, max_length=200, description="Only chats whose title or messages contain this text"),
+    scope: Literal["personal", "all"] = Query(
+        default="personal", description="personal = chats outside projects (the sidebar), all = also project chats"
+    ),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """My chats, the most recently active first. Add ?q=... to search titles and message text."""
-    return chat_service.list_chats(db, user.user_id, q)
+    """My chats, the most recently active first. Add ?q=... to search titles and message text.
+    Chats that belong to a project are listed inside the project (GET /projects/{id}/chats)."""
+    return chat_service.list_chats(db, user.user_id, q, include_projects=scope == "all")
 
 
 @router.get("/{chat_id}", response_model=ChatDetail)
@@ -55,8 +61,11 @@ def open_chat(chat_id: int, user: User = Depends(get_current_user), db: Session 
         chat = chat_service.own_chat(db, user.user_id, chat_id)
     except ChatError as error:
         raise http_error(error) from None
+    project = db.get(Project, chat.project_id) if chat.project_id is not None else None
     return ChatDetail(
         chat_id=chat.chat_id,
+        project_id=chat.project_id,
+        project=ProjectRef(project_id=project.project_id, title=project.title) if project else None,
         title=chat.title,
         created_at=chat.created_at,
         updated_at=chat.updated_at,

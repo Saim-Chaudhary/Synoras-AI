@@ -29,3 +29,8 @@ export function plannedTierFromNote(note: string | null): string | null {
   const match = note?.match(/^Planned (\w+),/);
   return match ? match[1] : null;
 }
+
+// "2026-11-19T10:30:00+00:00" -> "19 Nov 2026" (in the person's own time zone).
+export function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}

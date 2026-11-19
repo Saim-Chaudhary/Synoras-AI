@@ -12,7 +12,9 @@ from sqlalchemy import and_, delete, exists, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.chat import DEFAULT_TITLE, Chat, Message, Subtask
+from app.models.project import Project
 from app.schemas.chat import MessageOut, RoutingOut
+from app.services.project_service import project_context_text
 
 # How much of the conversation is sent to the model as context (FR-3). Free plans are small
 # (Groq: 8K tokens a minute), so the history is capped by message count AND by size.
@@ -62,10 +64,19 @@ def _like_pattern(text: str) -> str:
     return f"%{escaped}%"
 
 
-def list_chats(db: Session, user_id: int, query: str | None = None, limit: int = 200) -> list[Chat]:
+def list_chats(
+    db: Session,
+    user_id: int,
+    query: str | None = None,
+    limit: int = 200,
+    include_projects: bool = False,
+) -> list[Chat]:
     """The user's chats, the most recently active first. With `query`, only chats whose
-    title or any message contains it (capitals do not matter)."""
+    title or any message contains it (capitals do not matter). Chats that belong to a project
+    are listed inside their project, so they are left out unless `include_projects` is set."""
     statement = select(Chat).where(Chat.user_id == user_id)
+    if not include_projects:
+        statement = statement.where(Chat.project_id.is_(None))
     search = (query or "").strip()
     if search:
         pattern = _like_pattern(search)
@@ -141,8 +152,9 @@ class Turn:
     prompt: list[dict]  # what is sent to the model: system prompt + recent history
 
 
-def build_prompt(history: list[tuple[str, str]]) -> list[dict]:
-    """history = (sender, text) pairs, oldest first, ending with the new user message."""
+def build_prompt(history: list[tuple[str, str]], project_text: str | None = None) -> list[dict]:
+    """history = (sender, text) pairs, oldest first, ending with the new user message.
+    project_text is what the model should know about the project, in a project chat (FR-13)."""
     recent = history[-HISTORY_MAX_MESSAGES:]
     # Too long? Drop the oldest messages first, but always keep the newest one.
     while len(recent) > 1 and sum(len(text) for _, text in recent) > HISTORY_MAX_CHARS:
@@ -150,7 +162,8 @@ def build_prompt(history: list[tuple[str, str]]) -> list[dict]:
     # The model should see a conversation that starts with the user.
     while len(recent) > 1 and recent[0][0] == "assistant":
         recent = recent[1:]
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    system = SYSTEM_PROMPT if not project_text else SYSTEM_PROMPT + "\n\n" + project_text
+    messages = [{"role": "system", "content": system}]
     messages += [
         {"role": "user" if sender == "user" else "assistant", "content": text}
         for sender, text in recent
@@ -202,12 +215,13 @@ def prepare_turn(db: Session, user_id: int, chat: Chat, action: str, text: str |
         .limit(HISTORY_MAX_MESSAGES)
     ).all()
     history = [(sender, body) for sender, body in reversed(newest_first)]
+    project = db.get(Project, chat.project_id) if chat.project_id is not None else None
     turn = Turn(
         chat_id=chat.chat_id,
         user_id=user_id,
         user_message_id=user_message.message_id,
         user_text=user_message.text,
-        prompt=build_prompt(history),
+        prompt=build_prompt(history, project_context_text(project) if project else None),
     )
     db.commit()  # keep the user's message even if the model cannot answer (FR-3)
     return turn

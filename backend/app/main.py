@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import auth, chats, dev_routing, health
+from app.api import auth, chats, dev_routing, health, projects
 from app.core.config import get_settings
 from app.core.security import AuthConfigError
 
@@ -30,4 +30,5 @@ def auth_not_configured(request: Request, error: AuthConfigError) -> JSONRespons
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(chats.router)
+app.include_router(projects.router)
 app.include_router(dev_routing.router)  # temporary test endpoints, see dev_routing.py

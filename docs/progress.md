@@ -65,11 +65,11 @@ Rules now in force (see `decisions.md` A6 to A9):
     - [ ] Endpoint that returns the graph for the panel (at most 150 entities by default)
     - [ ] Chat side panel with the tabs Memories and Knowledge graph; graph drawn with Cytoscape.js (approved); highlight driven by the events (instant color change, no animation)
     - [ ] Project knowledge base area: graph status on each document and a Show knowledge graph button
-- [ ] **6. Projects and tasks** (FR-11 to FR-13)
-  - [ ] Create, open, rename, delete projects
-  - [ ] Task board (To Do, In Progress, Done)
-  - [ ] Project notes (summaries and decisions)
-  - [ ] Project context and project memory in chat
+- [x] **6. Projects and tasks** (FR-11 to FR-13): built and tested (227 backend tests; also tried in a real browser, decisions A27). Project memory waits for the Memory step.
+  - [x] Create, open, rename, delete projects (duplicate or empty name rejected; delete asks first and also deletes the project's chats, tasks and notes, BR-13); sidebar Projects section and a Projects page
+  - [x] Task board (To Do, In Progress, Done): add, edit, move with buttons, due date with an Overdue marker, delete; progress counts and percent
+  - [x] Project notes (summaries and decisions): add, edit, delete. The AI-written summary button comes later
+  - [~] Project context in chat: chats inside a project, header with the project name, project name and description given to the model. Project memory and project documents come with the Memory and Documents steps (the Documents tab is a disabled placeholder)
 - [ ] **7. Memory conflict handling** (FR-9, FR-10)
   - [ ] Detect contradictions before saving
   - [ ] Conflict screen: keep old, use new, keep both (`memory_conflicts` table)

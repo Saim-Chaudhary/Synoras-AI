@@ -22,12 +22,13 @@ type Props = {
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void; // the page validates the field when the person leaves it
-  type?: "text" | "email" | "password";
+  type?: "text" | "email" | "password" | "date";
   autoComplete?: string; // lets the browser and password managers fill the field in
   inputMode?: "text" | "email";
   hint?: string; // small help text under the input
   requirements?: Requirement[]; // a checklist, for example for the password rules
   error?: string; // when set, the input is marked wrong and the message appears below it
+  className?: string; // spacing above the field (the default suits a form with many fields)
 };
 
 export default function TextField({
@@ -42,6 +43,7 @@ export default function TextField({
   hint,
   requirements,
   error,
+  className = "mt-5",
 }: Props) {
   const [shown, setShown] = useState(false); // password visible?
   const [capsLock, setCapsLock] = useState(false);
@@ -57,7 +59,7 @@ export default function TextField({
   }
 
   return (
-    <div className="mt-5">
+    <div className={className}>
       <label htmlFor={id} className="block text-sm font-medium text-ink">
         {label}
       </label>
@@ -69,8 +71,8 @@ export default function TextField({
           value={value}
           autoComplete={autoComplete}
           inputMode={inputMode}
-          autoCapitalize={type === "text" ? undefined : "none"}
-          spellCheck={type === "text" ? undefined : false}
+          autoCapitalize={type === "email" || type === "password" ? "none" : undefined}
+          spellCheck={type === "email" || type === "password" ? false : undefined}
           onChange={(event) => onChange(event.target.value)}
           onBlur={() => {
             setCapsLock(false);

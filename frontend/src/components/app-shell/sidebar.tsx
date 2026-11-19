@@ -18,6 +18,7 @@ import {
 import Logo from "@/components/logo";
 
 import ChatHistory from "./chat-history";
+import ProjectsSection from "./projects-section";
 import { useShell } from "./shell-context";
 
 // The round badge with the first letter of the user's name.
@@ -55,7 +56,7 @@ function Section({ title, emptyText }: { title: string; emptyText: string }) {
 // It is used twice: docked on the left (from 768 px wide) and inside the drawer on a phone.
 function SidebarContent({ topRight, onNavigate }: { topRight: ReactNode; onNavigate?: () => void }) {
   const { user, logout } = useShell();
-  const { search, setSearch } = useChat();
+  const { search, setSearch, newChat } = useChat();
 
   return (
     <>
@@ -68,7 +69,14 @@ function SidebarContent({ topRight, onNavigate }: { topRight: ReactNode; onNavig
       </div>
 
       <div className="space-y-3 px-3 pb-3">
-        <Link href="/chat" onClick={onNavigate} className={buttonClass("primary", "w-full")}>
+        <Link
+          href="/chat"
+          onClick={() => {
+            newChat(); // a new personal chat: it leaves any project
+            onNavigate?.();
+          }}
+          className={buttonClass("primary", "w-full")}
+        >
           <PlusIcon className="size-4" />
           New chat
         </Link>
@@ -87,7 +95,7 @@ function SidebarContent({ topRight, onNavigate }: { topRight: ReactNode; onNavig
 
       <nav aria-label="Chats, projects and memory" className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         <ChatHistory onNavigate={onNavigate} />
-        <Section title="Projects" emptyText="No projects yet." />
+        <ProjectsSection onNavigate={onNavigate} />
         <Section title="Memory" emptyText="Nothing remembered yet." />
       </nav>
 
@@ -107,6 +115,7 @@ function SidebarContent({ topRight, onNavigate }: { topRight: ReactNode; onNavig
 
 export default function Sidebar() {
   const { user, logout, sidebarCollapsed, toggleSidebar, drawerOpen, closeDrawer } = useShell();
+  const { newChat } = useChat();
   const closeButton = useRef<HTMLButtonElement>(null);
 
   // The phone drawer: Escape closes it, and the cursor starts on its close button.
@@ -130,7 +139,7 @@ export default function Sidebar() {
           <IconButton label="Expand sidebar" onClick={toggleSidebar}>
             <PanelLeftIcon />
           </IconButton>
-          <Link href="/chat" aria-label="New chat" title="New chat" className={ICON_BUTTON_CLASS}>
+          <Link href="/chat" onClick={newChat} aria-label="New chat" title="New chat" className={ICON_BUTTON_CLASS}>
             <PlusIcon />
           </Link>
           <div className="mt-auto flex flex-col items-center gap-2">

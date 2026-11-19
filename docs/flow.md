@@ -44,7 +44,7 @@ Synoras_AI/
     src/app/       pages and layouts (App Router): each folder here becomes a web address
     src/app/globals.css  the ONLY place with color values: brand colors, light and dark palettes and the class names (bg-surface, text-ink, ...)
     src/app/(app)/  pages that need a login and are shown inside the app shell ("(app)" is only a grouping folder, not part of the address)
-    src/components/  pieces several pages share (logo, button, icons, auth-card, constellation, text-field, status-screen), app-shell/ (sidebar, top bar, side panel, chat-history), chat/ (chat-provider, chat-screen, message-item, markdown, composer, empty-chat, copy-button)
+    src/components/  pieces several pages share (logo, button, icons, auth-card, constellation, text-field, status-screen), app-shell/ (sidebar, top bar, side panel, chat-history), chat/ (chat-provider, chat-screen, message-item, markdown, composer, empty-chat, copy-button), projects/ (projects-provider, project-shell, project-form, task-form, note-form, progress-bar)
     src/lib/       helpers: api.ts (calls the backend), auth.ts (keeps the token), chats.ts (chat endpoints), stream.ts (reads the reply stream), group-chats.ts and format.ts (sidebar date groups, the note under a reply), use-require-auth.ts (the login guard), theme.ts (light/dark), use-persisted.ts (remembered settings)
   backend/         the server brain (FastAPI, Python)
     app/
@@ -215,7 +215,27 @@ Not built yet. This is the planned flow after the spec change of 2026-11-18 (dec
 - **Result:** the answer streams in with its sources, while the used entities and relationships light up in the panel.
 
 ## Projects and tasks
-Not built yet.
+**Goal:** the user keeps work in separate projects, each with its own chats, a task board and notes, and chats inside a project know what the project is about (FR-11, FR-12, FR-13, UC-5, UC-6).
+
+**1. Create, open, edit, delete a project**
+- **User does:** "+" in the sidebar or New project on `/projects` -> name and optional description. The project page (`/projects/12`) has Edit and Delete.
+- **Files, in order:** `app/(app)/projects/new/page.tsx` + `components/projects/project-form.tsx` -> `components/projects/projects-provider.tsx` (the list, shared with the sidebar) -> `lib/projects.ts` -> `app/api/projects.py` -> `services/project_service.py` (`own_project`: another user's project answers 404; a used name answers 409).
+- **Delete:** an inline confirm box says the chats, tasks and notes go too; the database removes them (`ON DELETE CASCADE`, migration 0004).
+
+**2. The task board** (tab Tasks, `/projects/12/tasks`)
+- **User does:** adds a task (title, optional description and due date) in To Do, moves it with the buttons, edits or deletes it. The progress under the project name updates.
+- **Files, in order:** `app/(app)/projects/[id]/tasks/page.tsx` + `components/projects/task-form.tsx` -> `lib/projects.ts` -> `POST/GET /projects/{id}/tasks`, `PATCH/DELETE /projects/{id}/tasks/{task_id}` (a move is a PATCH with `status`) -> `project_service.py`. `GET /projects/{id}/progress` counts the tasks per status.
+- **Browser side:** a move changes the screen at once and is undone, with a message, if the server fails.
+
+**3. Notes** (tab Notes): `app/(app)/projects/[id]/notes/page.tsx` + `components/projects/note-form.tsx` -> `/projects/{id}/notes` (kind summary or decision, title, text; add, edit, delete).
+
+**4. A chat inside a project** (tab Chats)
+- **User does:** New chat in this project, then writes as usual. The top bar shows "Project / chat title".
+- **Files, in order:**
+  1. `app/(app)/projects/[id]/page.tsx`: the button calls `startProjectChat` of `components/chat/chat-provider.tsx`, which remembers the project and opens `/chat`.
+  2. On the first message the provider creates the chat with `POST /projects/{id}/chats` (a normal chat otherwise) and the rest is the normal chat flow.
+  3. `services/chat_service.py` `prepare_turn`: loads the chat's project and `build_prompt` adds `project_context_text` (name and description) to the system prompt.
+- **Result:** the model is told the project's name and description in every reply of that chat. The project's chats are listed in the project, not in the sidebar chat list (`GET /chats` skips them).
 
 ## Memory conflict handling
 Not built yet.

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import AppShell from "@/components/app-shell/app-shell";
 import { ChatProvider } from "@/components/chat/chat-provider";
 import { ShellProvider } from "@/components/app-shell/shell-context";
+import { ProjectsProvider } from "@/components/projects/projects-provider";
 import StatusScreen from "@/components/status-screen";
 import { useRequireAuth } from "@/lib/use-require-auth";
 
@@ -28,7 +29,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <ShellProvider user={user} logout={logout}>
       <ChatProvider>
-        <AppShell>{children}</AppShell>
+        <ProjectsProvider>
+          <AppShell>{children}</AppShell>
+        </ProjectsProvider>
       </ChatProvider>
     </ShellProvider>
   );

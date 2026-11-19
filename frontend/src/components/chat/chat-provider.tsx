@@ -26,10 +26,12 @@ import {
   listChats,
   renameChat as renameChatApi,
   type ChatSummary,
+  type ProjectRef,
   type Routing,
   type ServerMessage,
 } from "@/lib/chats";
 import { tierLabel } from "@/lib/format";
+import { createProjectChat } from "@/lib/projects";
 import { streamMessage, type SendAction, type ServerEvent } from "@/lib/stream";
 
 const NEW_CHAT_TITLE = "New chat";
@@ -57,6 +59,7 @@ type State = {
   search: string;
   activeChatId: number | null;
   title: string;
+  project: ProjectRef | null; // the project of the open chat (or of the new chat about to start)
   messages: UiMessage[];
   phase: Phase;
   loadError: string | null; // the open chat could not be loaded
@@ -70,6 +73,7 @@ const INITIAL: State = {
   search: "",
   activeChatId: null,
   title: NEW_CHAT_TITLE,
+  project: null,
   messages: [],
   phase: "idle",
   loadError: null,
@@ -81,6 +85,8 @@ type Chat = State & {
   stop: () => void;
   regenerate: () => Promise<void>;
   editLast: (text: string) => Promise<void>;
+  newChat: () => void; // a new personal chat (clears the project)
+  startProjectChat: (project: ProjectRef) => void; // a new chat inside a project
   retryOpen: () => void;
   retryChats: () => void;
   setSearch: (query: string) => void;
@@ -213,6 +219,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           ...s,
           activeChatId: null,
           title: NEW_CHAT_TITLE,
+          project: null,
           messages: [],
           phase: "idle",
           loadError: null,
@@ -224,6 +231,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         ...s,
         activeChatId: chatId,
         title: s.chats.find((c) => c.chat_id === chatId)?.title ?? "",
+        project: null,
         messages: [],
         phase: "loading",
         loadError: null,
@@ -235,6 +243,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         setState((s) => ({
           ...s,
           title: chat.title,
+          project: chat.project,
           messages: chat.messages.map(fromServer),
           phase: "idle",
         }));
@@ -405,14 +414,23 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         let chatId = stateRef.current.activeChatId;
         if (chatId === null) {
           // The first message of a new chat: create the chat, then put its number in the address.
-          const chat = await createChat().catch((error: unknown) => {
+          // Inside a project the chat is created in that project (the model then knows about it).
+          const project = stateRef.current.project;
+          const created = project ? createProjectChat(project.project_id) : createChat();
+          const chat = await created.catch((error: unknown) => {
             if (error instanceof ApiError && error.status === 401) goToLogin();
             setState((s) => ({ ...s, banner: errorText(error) }));
             return null;
           });
           if (!chat) return;
           chatId = chat.chat_id;
-          setState((s) => ({ ...s, activeChatId: chat.chat_id, title: chat.title, chats: [chat, ...s.chats] }));
+          setState((s) => ({
+            ...s,
+            activeChatId: chat.chat_id,
+            title: chat.title,
+            // a project chat is listed inside its project, not in the sidebar
+            chats: chat.project_id === null ? [chat, ...s.chats] : s.chats,
+          }));
           window.history.replaceState(null, "", `/chat/${chat.chat_id}`);
         }
         await runStream(chatId, "send", trimmed);
@@ -449,6 +467,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   );
 
   const stop = useCallback(() => abortRef.current?.abort(), []);
+
+  // ---------- starting a new chat ----------
+
+  const newChat = useCallback(() => {
+    void openChat(null);
+  }, [openChat]);
+
+  const startProjectChat = useCallback(
+    (project: ProjectRef) => {
+      void openChat(null); // stops a running reply and empties the screen
+      setState((s) => ({ ...s, project }));
+      router.push("/chat");
+    },
+    [openChat, router],
+  );
 
   // ---------- rename and delete (they return an error message, or null when it worked) ----------
 
@@ -492,13 +525,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       stop,
       regenerate,
       editLast,
+      newChat,
+      startProjectChat,
       retryOpen,
       retryChats,
       setSearch,
       renameChat,
       deleteChat,
     }),
-    [state, send, stop, regenerate, editLast, retryOpen, retryChats, setSearch, renameChat, deleteChat],
+    [state, send, stop, regenerate, editLast, newChat, startProjectChat, retryOpen, retryChats, setSearch, renameChat, deleteChat],
   );
 
   return <ChatContext value={value}>{children}</ChatContext>;

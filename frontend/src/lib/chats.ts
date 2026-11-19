@@ -5,6 +5,7 @@ import { authFetch } from "@/lib/auth";
 
 export type ChatSummary = {
   chat_id: number;
+  project_id: number | null; // empty for a personal chat
   title: string;
   created_at: string;
   updated_at: string;
@@ -29,7 +30,10 @@ export type ServerMessage = {
   routing: Routing | null;
 };
 
-export type ChatDetail = ChatSummary & { messages: ServerMessage[] };
+// The project a chat belongs to (shown in the chat's header).
+export type ProjectRef = { project_id: number; title: string };
+
+export type ChatDetail = ChatSummary & { project: ProjectRef | null; messages: ServerMessage[] };
 
 export function listChats(query?: string): Promise<ChatSummary[]> {
   const search = query?.trim();
