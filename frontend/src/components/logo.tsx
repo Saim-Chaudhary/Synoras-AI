@@ -5,6 +5,8 @@ import Image from "next/image";
 // current theme (the "dark:" variant in globals.css follows the data-theme attribute).
 //   full = the mark with the name   (login and register pages)
 //   mark = the mark alone           (sidebar, empty chat, side panel)
+// tone="onDark" is for a spot that is always dark (the navy brand panel): it always shows the
+// dark-background file, whatever the theme.
 const FILES = {
   full: { forLight: "/logo-full.svg", forDark: "/logo-full-dark.svg", ratio: 420 / 120 },
   mark: { forLight: "/logo-mark.svg", forDark: "/logo-mark-light.svg", ratio: 1 },
@@ -14,11 +16,17 @@ type Props = {
   variant: "full" | "mark";
   height: number; // in pixels; the width follows from the shape of the logo
   priority?: boolean; // true for logos that are visible as soon as the page opens
+  tone?: "auto" | "onDark";
 };
 
-export default function Logo({ variant, height, priority }: Props) {
+export default function Logo({ variant, height, priority, tone = "auto" }: Props) {
   const { forLight, forDark, ratio } = FILES[variant];
   const width = Math.round(height * ratio);
+
+  if (tone === "onDark") {
+    return <Image src={forDark} alt="Synoras AI" width={width} height={height} priority={priority} />;
+  }
+
   return (
     <>
       <Image

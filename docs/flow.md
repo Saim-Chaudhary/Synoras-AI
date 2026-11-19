@@ -44,7 +44,7 @@ Synoras_AI/
     src/app/       pages and layouts (App Router): each folder here becomes a web address
     src/app/globals.css  the ONLY place with color values: brand colors, light and dark palettes and the class names (bg-surface, text-ink, ...)
     src/app/(app)/  pages that need a login and are shown inside the app shell ("(app)" is only a grouping folder, not part of the address)
-    src/components/  pieces several pages share (logo, button, icons, auth-card, text-field, status-screen), app-shell/ (sidebar, top bar, side panel, chat-history), chat/ (chat-provider, chat-screen, message-item, markdown, composer, empty-chat, copy-button)
+    src/components/  pieces several pages share (logo, button, icons, auth-card, constellation, text-field, status-screen), app-shell/ (sidebar, top bar, side panel, chat-history), chat/ (chat-provider, chat-screen, message-item, markdown, composer, empty-chat, copy-button)
     src/lib/       helpers: api.ts (calls the backend), auth.ts (keeps the token), chats.ts (chat endpoints), stream.ts (reads the reply stream), group-chats.ts and format.ts (sidebar date groups, the note under a reply), use-require-auth.ts (the login guard), theme.ts (light/dark), use-persisted.ts (remembered settings)
   backend/         the server brain (FastAPI, Python)
     app/

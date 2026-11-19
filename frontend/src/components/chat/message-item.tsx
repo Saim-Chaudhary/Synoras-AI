@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 
+import { AnimatedMark } from "@/components/animated-mark";
 import { buttonClass } from "@/components/button";
+import { ICON_BUTTON_CLASS } from "@/components/icon-button";
 import { PencilIcon, RefreshIcon } from "@/components/icons";
 import { formatCost, formatSeconds, plannedTierFromNote, tierLabel } from "@/lib/format";
 
@@ -10,10 +12,8 @@ import type { UiMessage } from "./chat-provider";
 import CopyButton from "./copy-button";
 import Markdown from "./markdown";
 
-const SMALL_BUTTON =
-  "inline-flex size-7 items-center justify-center rounded-md text-ink-muted hover:bg-surface-hover hover:text-ink disabled:cursor-not-allowed disabled:opacity-40";
-
 // The small note under each reply: tier used, model, complexity, time and estimated cost.
+// Numbers are in the mono face so the columns of digits line up from one reply to the next.
 function RoutingNote({ message }: { message: UiMessage }) {
   const routing = message.routing;
   if (!routing) return null;
@@ -28,7 +28,7 @@ function RoutingNote({ message }: { message: UiMessage }) {
   if (planned && planned !== routing.tier) parts.push(`fell back from ${tierLabel(planned)}`);
   if (message.stopped) parts.push("stopped");
   return (
-    <p className="text-xs text-ink-faint" data-testid="routing-note">
+    <p className="font-mono text-xs tabular-nums leading-5 text-ink-faint" data-testid="routing-note">
       {parts.join(" · ")}
     </p>
   );
@@ -50,7 +50,7 @@ export default function MessageItem({ message, isLastUser, isLastReply, busy, on
   if (message.sender === "user") {
     if (editing) {
       return (
-        <div className="ml-auto w-full max-w-[85%] space-y-2">
+        <div className="ml-auto w-full max-w-[80%] space-y-2">
           <label htmlFor="edit-message" className="sr-only">
             Edit your message
           </label>
@@ -60,10 +60,10 @@ export default function MessageItem({ message, isLastUser, isLastReply, busy, on
             rows={3}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            className="block w-full resize-y rounded-2xl border border-accent bg-surface px-4 py-3 text-ink focus:outline-none"
+            className="block w-full resize-y rounded-card border border-accent bg-surface px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-live/40"
           />
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setEditing(false)} className={buttonClass("secondary", "!py-1.5")}>
+            <button type="button" onClick={() => setEditing(false)} className={buttonClass("secondary")}>
               Cancel
             </button>
             <button
@@ -73,7 +73,7 @@ export default function MessageItem({ message, isLastUser, isLastReply, busy, on
                 setEditing(false);
                 onEdit(draft);
               }}
-              className={buttonClass("primary", "!py-1.5")}
+              className={buttonClass("primary")}
             >
               Save and resend
             </button>
@@ -82,21 +82,23 @@ export default function MessageItem({ message, isLastUser, isLastReply, busy, on
       );
     }
     return (
-      <div className="group ml-auto flex max-w-[85%] flex-col items-end gap-1">
-        <div className="whitespace-pre-wrap break-words rounded-2xl bg-sidebar px-4 py-3 text-ink">{message.text}</div>
+      <div className="ml-auto flex max-w-[80%] flex-col items-end">
+        <div className="whitespace-pre-wrap break-words rounded-card bg-sidebar px-4 py-3 text-[15px] leading-6 text-ink">
+          {message.text}
+        </div>
         {message.failed && (
-          <p className="text-xs text-danger" role="status">
+          <p className="mt-1 text-xs text-danger" role="status">
             Not sent.
           </p>
         )}
-        <div className="flex gap-1">
+        <div className="mt-1 flex">
           <CopyButton text={message.text} label="Copy message" />
           {isLastUser && !busy && message.id !== null && (
             <button
               type="button"
               aria-label="Edit message"
               title="Edit message"
-              className={SMALL_BUTTON}
+              className={ICON_BUTTON_CLASS}
               onClick={() => {
                 setDraft(message.text);
                 setEditing(true);
@@ -110,33 +112,37 @@ export default function MessageItem({ message, isLastUser, isLastReply, busy, on
     );
   }
 
-  // assistant
+  // assistant: no bubble, the answer uses the full width of the column like a page
   return (
     <div className="space-y-2">
-      {message.pending && !message.text && (
-        <p role="status" className="text-ink-muted">
-          {message.notice ?? "Thinking..."}
+      {message.text && (
+        <div className="text-[15px] leading-[26px]">
+          <Markdown text={message.text} />
+        </div>
+      )}
+      {message.pending && (
+        <p className="flex items-center gap-2 text-sm text-ink-muted">
+          <AnimatedMark size={22} mode="thinking" label="" />
+          {message.notice ?? (message.text ? "Writing..." : "Thinking...")}
         </p>
       )}
-      {message.text && <Markdown text={message.text} />}
-      {message.pending && message.text && message.notice && <p className="text-xs text-ink-faint">{message.notice}</p>}
       {message.error && (
-        <p role="alert" className="rounded-xl border border-danger-line bg-danger-soft px-3 py-2 text-sm text-danger">
+        <p role="alert" className="rounded-control border border-danger-line bg-danger-soft px-3 py-2 text-sm text-danger">
           {message.error}
         </p>
       )}
       {!message.pending && (
-        <>
+        <div>
           <RoutingNote message={message} />
-          <div className="flex gap-1">
+          <div className="-ml-2 mt-1 flex">
             {message.text && <CopyButton text={message.text} label="Copy reply" />}
             {isLastReply && !busy && (
-              <button type="button" aria-label="Regenerate" title="Regenerate" className={SMALL_BUTTON} onClick={onRegenerate}>
+              <button type="button" aria-label="Regenerate" title="Regenerate" className={ICON_BUTTON_CLASS} onClick={onRegenerate}>
                 <RefreshIcon className="size-4" />
               </button>
             )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

@@ -1,7 +1,8 @@
 "use client";
 
 // The state that the shell's parts share: who is logged in, whether the sidebar is collapsed,
-// and whether the side panel is open. Any component inside the shell reads it with useShell().
+// whether the phone drawer (the sidebar on a narrow screen) is open, and whether the side panel
+// is open. Any component inside the shell reads it with useShell().
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 
@@ -13,6 +14,9 @@ type Shell = {
   logout: () => void;
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
+  drawerOpen: boolean;
+  openDrawer: () => void;
+  closeDrawer: () => void;
   panelOpen: boolean;
   togglePanel: () => void;
   closePanel: () => void;
@@ -29,11 +33,12 @@ export function ShellProvider({
   logout: () => void;
   children: ReactNode;
 }) {
-  // The sidebar choice is remembered between visits. The side panel always starts closed.
+  // The sidebar choice is remembered between visits. The drawer and the side panel start closed.
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedBoolean(
     "synoras_sidebar_collapsed",
     false,
   );
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
 
   const value: Shell = {
@@ -41,6 +46,9 @@ export function ShellProvider({
     logout,
     sidebarCollapsed,
     toggleSidebar: () => setSidebarCollapsed(!sidebarCollapsed),
+    drawerOpen,
+    openDrawer: () => setDrawerOpen(true),
+    closeDrawer: () => setDrawerOpen(false),
     panelOpen,
     togglePanel: () => setPanelOpen(!panelOpen),
     closePanel: () => setPanelOpen(false),

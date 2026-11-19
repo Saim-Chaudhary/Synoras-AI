@@ -1,20 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useState, type FocusEvent, type FormEvent, type KeyboardEvent } from "react";
 
 import { useChat } from "@/components/chat/chat-provider";
-import { PencilIcon, TrashIcon } from "@/components/icons";
+import { MoreIcon, PencilIcon, TrashIcon } from "@/components/icons";
+import { buttonClass } from "@/components/button";
 import { groupChats } from "@/lib/group-chats";
 import type { ChatSummary } from "@/lib/chats";
 
-const ROW_BUTTON =
-  "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-surface hover:text-ink";
+// The "..." button of a row. On a screen with a mouse it only appears when the row is pointed at
+// or focused; on a touch screen (no hover) it is always there.
+const OPTIONS_BUTTON =
+  "mr-1 inline-flex size-8 shrink-0 items-center justify-center rounded-control text-ink-muted hover:bg-surface hover:text-ink";
+const OPTIONS_BUTTON_HIDDEN_UNTIL_HOVER =
+  "[@media(hover:hover)]:hidden [@media(hover:hover)]:group-hover:inline-flex [@media(hover:hover)]:group-focus-within:inline-flex";
+
+const MENU_ITEM =
+  "flex min-h-10 w-full items-center gap-2 rounded-control px-3 text-left text-sm text-ink hover:bg-surface-hover";
 
 // One chat in the list. Normally a link; it turns into a rename box or a delete question when asked.
-function ChatRow({ chat, active }: { chat: ChatSummary; active: boolean }) {
+function ChatRow({ chat, active, onNavigate }: { chat: ChatSummary; active: boolean; onNavigate?: () => void }) {
   const { renameChat, deleteChat } = useChat();
   const [mode, setMode] = useState<"view" | "rename" | "delete">("view");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +44,18 @@ function ChatRow({ chat, active }: { chat: ChatSummary; active: boolean }) {
     }
   }
 
+  // Close the menu when focus leaves the row (a click elsewhere, or Tab past the last item).
+  function closeMenuOnBlur(event: FocusEvent<HTMLLIElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget)) setMenuOpen(false);
+  }
+
+  function closeMenuOnEscape(event: KeyboardEvent<HTMLLIElement>) {
+    if (event.key === "Escape" && menuOpen) {
+      setMenuOpen(false);
+      event.currentTarget.querySelector<HTMLButtonElement>("button[aria-haspopup]")?.focus();
+    }
+  }
+
   if (mode === "rename") {
     return (
       <li className="px-1 py-1">
@@ -50,23 +71,27 @@ function ChatRow({ chat, active }: { chat: ChatSummary; active: boolean }) {
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => event.key === "Escape" && setMode("view")}
             onBlur={() => setMode("view")}
-            className="w-full rounded-lg border border-accent bg-surface px-2 py-1.5 text-sm text-ink focus:outline-none"
+            className="h-10 w-full rounded-control border border-accent bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-live/40"
           />
         </form>
-        {error && <p className="px-1 pt-1 text-xs text-danger">{error}</p>}
+        {error && (
+          <p role="alert" className="px-1 pt-1 text-xs text-danger">
+            {error}
+          </p>
+        )}
       </li>
     );
   }
 
   if (mode === "delete") {
     return (
-      <li className="rounded-lg bg-danger-soft px-3 py-2 text-sm">
+      <li className="rounded-control bg-danger-soft px-3 py-2 text-sm" role="alertdialog" aria-label={`Delete ${chat.title}?`}>
         <p className="text-danger">Delete this chat?</p>
         <div className="mt-2 flex gap-2">
-          <button type="button" onClick={confirmDelete} className="rounded-md bg-danger px-2 py-1 text-xs font-medium text-canvas">
+          <button type="button" autoFocus onClick={confirmDelete} className={buttonClass("danger", "!min-h-9 !px-3")}>
             Delete
           </button>
-          <button type="button" onClick={() => setMode("view")} className="rounded-md border border-danger-line px-2 py-1 text-xs text-ink">
+          <button type="button" onClick={() => setMode("view")} className={buttonClass("secondary", "!min-h-9 !px-3")}>
             Cancel
           </button>
         </div>
@@ -75,48 +100,74 @@ function ChatRow({ chat, active }: { chat: ChatSummary; active: boolean }) {
   }
 
   return (
-    <li className={`group flex items-center rounded-lg ${active ? "bg-highlight-soft" : "hover:bg-surface-hover"}`}>
+    <li
+      className={`group relative flex items-center rounded-control ${active ? "bg-accent-soft" : "hover:bg-surface-hover"}`}
+      onBlur={closeMenuOnBlur}
+      onKeyDown={closeMenuOnEscape}
+    >
+      {active && <span aria-hidden="true" className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-live" />}
       <Link
         href={`/chat/${chat.chat_id}`}
         aria-current={active ? "page" : undefined}
-        className="min-w-0 flex-1 truncate px-3 py-2 text-sm text-ink"
+        onClick={onNavigate}
+        className="min-w-0 flex-1 truncate py-2.5 pl-4 pr-2 text-sm text-ink"
       >
         {chat.title}
       </Link>
-      <div className="hidden shrink-0 gap-0.5 pr-1 group-focus-within:flex group-hover:flex">
-        <button
-          type="button"
-          aria-label={`Rename ${chat.title}`}
-          title="Rename"
-          className={ROW_BUTTON}
-          onClick={() => {
-            setDraft(chat.title);
-            setError(null);
-            setMode("rename");
-          }}
+      <button
+        type="button"
+        aria-label={`Options for ${chat.title}`}
+        title="Options"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        className={menuOpen ? OPTIONS_BUTTON : `${OPTIONS_BUTTON} ${OPTIONS_BUTTON_HIDDEN_UNTIL_HOVER}`}
+        onClick={() => setMenuOpen(!menuOpen)}
+      >
+        <MoreIcon className="size-4" />
+      </button>
+      {menuOpen && (
+        <div
+          role="menu"
+          aria-label={`Options for ${chat.title}`}
+          className="absolute right-1 top-full z-20 mt-1 w-40 rounded-card border border-line-strong bg-surface p-1 shadow-lg"
         >
-          <PencilIcon className="size-4" />
-        </button>
-        <button
-          type="button"
-          aria-label={`Delete ${chat.title}`}
-          title="Delete"
-          className={ROW_BUTTON}
-          onClick={() => {
-            setError(null);
-            setMode("delete");
-          }}
-        >
-          <TrashIcon className="size-4" />
-        </button>
-      </div>
+          <button
+            type="button"
+            role="menuitem"
+            className={MENU_ITEM}
+            onClick={() => {
+              setMenuOpen(false);
+              setDraft(chat.title);
+              setError(null);
+              setMode("rename");
+            }}
+          >
+            <PencilIcon className="size-4" />
+            Rename
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={`${MENU_ITEM} !text-danger`}
+            onClick={() => {
+              setMenuOpen(false);
+              setError(null);
+              setMode("delete");
+            }}
+          >
+            <TrashIcon className="size-4" />
+            Delete
+          </button>
+        </div>
+      )}
     </li>
   );
 }
 
 // The list of earlier chats, grouped by date (Today, Yesterday, Previous 7 days, ...).
 // The search box is in the sidebar; the server does the searching (title and message text).
-export default function ChatHistory() {
+// onNavigate is called when a chat is opened (the phone drawer closes itself with it).
+export default function ChatHistory({ onNavigate }: { onNavigate?: () => void }) {
   const { chats, chatsStatus, chatsError, search, activeChatId, retryChats } = useChat();
 
   if (chatsStatus === "loading") return <p className="px-3 py-2 text-sm text-ink-muted">Loading chats...</p>;
@@ -127,7 +178,7 @@ export default function ChatHistory() {
         <p role="alert" className="text-danger">
           {chatsError}
         </p>
-        <button type="button" onClick={retryChats} className="mt-1 text-ink underline">
+        <button type="button" onClick={retryChats} className="mt-1 min-h-10 text-ink underline">
           Try again
         </button>
       </div>
@@ -146,10 +197,10 @@ export default function ChatHistory() {
     <div>
       {groupChats(chats).map((group) => (
         <section key={group.label}>
-          <h2 className="px-3 pb-1 pt-4 text-xs font-medium uppercase tracking-wide text-ink-faint">{group.label}</h2>
-          <ul>
+          <h2 className="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-faint">{group.label}</h2>
+          <ul className="space-y-0.5">
             {group.chats.map((chat) => (
-              <ChatRow key={chat.chat_id} chat={chat} active={chat.chat_id === activeChatId} />
+              <ChatRow key={chat.chat_id} chat={chat} active={chat.chat_id === activeChatId} onNavigate={onNavigate} />
             ))}
           </ul>
         </section>

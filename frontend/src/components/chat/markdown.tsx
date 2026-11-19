@@ -34,12 +34,12 @@ function CodeBlock({ node }: { node?: TreeNode }) {
   const text = code ? textOf(code).replace(/\n$/, "") : "";
   const language = code?.properties?.className?.find((name) => name.startsWith("language-"))?.slice(9);
   return (
-    <div className="overflow-hidden rounded-xl border border-line bg-sidebar">
-      <div className="flex items-center justify-between border-b border-line px-3 py-1">
+    <div className="overflow-hidden rounded-code border border-line-strong bg-sidebar">
+      <div className="flex items-center justify-between border-b border-line px-3 py-0.5">
         <span className="text-xs text-ink-muted">{language || "code"}</span>
-        <CopyButton text={text} label="Copy code" />
+        <CopyButton text={text} label="Copy code" size="sm" />
       </div>
-      <pre className="overflow-x-auto p-3 font-mono text-sm leading-relaxed text-ink">
+      <pre className="overflow-x-auto p-3 font-mono text-[13px] leading-5 text-ink">
         <code>{text}</code>
       </pre>
     </div>
@@ -64,7 +64,7 @@ const heading = (Tag: keyof typeof HEADING_CLASS) =>
 const COMPONENTS: Components = {
   pre: ({ node }) => <CodeBlock node={node as TreeNode | undefined} />,
   code: ({ children }) => (
-    <code className="rounded bg-sidebar px-1.5 py-0.5 font-mono text-[0.9em]">{children}</code>
+    <code className="rounded-control bg-sidebar px-1.5 py-0.5 font-mono text-[0.9em]">{children}</code>
   ),
   h1: heading("h1"),
   h2: heading("h2"),
@@ -96,7 +96,7 @@ const PLUGINS = [remarkGfm];
 
 export default function Markdown({ text }: { text: string }) {
   return (
-    <div className="space-y-4 break-words leading-7">
+    <div className="space-y-4 break-words">
       <ReactMarkdown remarkPlugins={PLUGINS} components={COMPONENTS}>
         {text}
       </ReactMarkdown>

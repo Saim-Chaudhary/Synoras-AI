@@ -5,7 +5,7 @@
    Components never use a hex code or a Tailwind palette color (no bg-gray-100,
    text-red-700, ...). They use the meaning-based names defined below
    (bg-surface, text-ink, border-line, bg-accent, ...), so changing a color or a
-   whole theme means editing this file only (decisions A21).
+   whole theme means editing this file only (decisions A21, A25).
    ============================================================================= */
 
 /* "dark:" utilities (only used for the two logo variants) follow the data-theme
@@ -16,9 +16,12 @@
 :root {
   --brand-navy: #14213d;
   --brand-amber: #e9a23b;
+  --on-brand: #fffdf8; /* text on a navy brand panel (the same in both themes) */
 }
 
-/* 2. Light theme: a calm, warm neutral palette. Navy is the accent. */
+/* 2. Light theme: warm paper. Navy is the accent (buttons, links). Amber is the "live point":
+   it marks what is active (current chat, focus glow, streaming, Stop). Never use amber for
+   text on light backgrounds. */
 :root {
   color-scheme: light;
 
@@ -26,60 +29,73 @@
   --sidebar: #f3efe8; /* sidebar and panels */
   --surface: #fffefb; /* inputs, cards, side panel */
   --surface-hover: #ebe6dc; /* hover on list items and buttons */
-  --line: #e3ddd1; /* borders and dividers */
+  --line: #e3ddd1; /* dividers (decoration only) */
+  --line-strong: #8a8373; /* edges of controls: inputs, composer, secondary buttons (3:1) */
 
   --ink: #26231f; /* main text */
   --ink-muted: #6a6458; /* secondary text */
-  --ink-faint: #8c8576; /* placeholders, small labels */
+  --ink-faint: #6f695c; /* placeholders, small notes (4.5:1 on every background) */
 
-  --accent: var(--brand-navy); /* primary buttons, focus */
+  --accent: var(--brand-navy); /* primary buttons, links */
   --accent-hover: color-mix(in srgb, var(--brand-navy) 86%, white);
   --accent-ink: #fffdf8; /* text on the accent color */
-  --highlight: var(--brand-amber); /* small marks: avatar, selected items */
+  --accent-soft: color-mix(in srgb, var(--brand-navy) 6%, var(--canvas)); /* selected row, quiet fills */
+  --live: var(--brand-amber); /* the live point: active marker, caret, Stop, focus glow */
+  --highlight: var(--brand-amber); /* small marks: avatar */
   --highlight-soft: color-mix(in srgb, var(--brand-amber) 20%, var(--canvas));
   --focus: var(--brand-navy);
+  --mark-dot: var(--brand-navy); /* the dots and the name in the animated logo */
 
   --danger: #b3261e;
   --danger-soft: #fceeeb;
   --danger-line: #efc3bd;
 }
 
-/* 3. Dark theme: warm dark neutrals. Amber becomes the accent (navy is too dark on dark). */
+/* 3. Dark theme: navy-black, so the brand navy is present in dark mode too. Amber becomes the
+   accent (navy is too dark on a dark background). */
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --canvas: #1b1a18;
-  --sidebar: #151412;
-  --surface: #242220;
-  --surface-hover: #2e2b27;
-  --line: #38342e;
+  --canvas: #12151c;
+  --sidebar: #0e1117;
+  --surface: #1a1e28;
+  --surface-hover: #232836;
+  --line: #2a2f3c;
+  --line-strong: #6b7285;
 
-  --ink: #eeeae1;
-  --ink-muted: #a8a296;
-  --ink-faint: #7d776b;
+  --ink: #ece9e1;
+  --ink-muted: #a6abb8;
+  --ink-faint: #8f93a0;
 
   --accent: var(--brand-amber);
   --accent-hover: color-mix(in srgb, var(--brand-amber) 86%, white);
   --accent-ink: var(--brand-navy);
+  --accent-soft: color-mix(in srgb, var(--brand-amber) 14%, var(--canvas));
+  --live: var(--brand-amber);
   --highlight: var(--brand-amber);
-  --highlight-soft: color-mix(in srgb, var(--brand-amber) 18%, var(--canvas));
+  --highlight-soft: color-mix(in srgb, var(--brand-amber) 20%, var(--canvas));
   --focus: var(--brand-amber);
+  --mark-dot: var(--on-brand);
 
   --danger: #f2a29a;
   --danger-soft: #3a1f1c;
   --danger-line: #5e2e29;
 }
 
-/* 4. Tailwind class names for the tokens above: bg-canvas, text-ink, border-line, ... */
+/* 4. Tailwind class names for the tokens above: bg-canvas, text-ink, border-line-strong, ...
+   Shape scale (one rule, never broken): controls 10px, cards and bubbles 16px, code blocks 12px,
+   composer 24px, pills and round buttons fully round. */
 @theme inline {
   --color-brand-navy: var(--brand-navy);
   --color-brand-amber: var(--brand-amber);
+  --color-on-brand: var(--on-brand);
 
   --color-canvas: var(--canvas);
   --color-sidebar: var(--sidebar);
   --color-surface: var(--surface);
   --color-surface-hover: var(--surface-hover);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
 
   --color-ink: var(--ink);
   --color-ink-muted: var(--ink-muted);
@@ -88,6 +104,8 @@
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-live: var(--live);
   --color-highlight: var(--highlight);
   --color-highlight-soft: var(--highlight-soft);
 
@@ -95,8 +113,14 @@
   --color-danger-soft: var(--danger-soft);
   --color-danger-line: var(--danger-line);
 
-  /* Inter is loaded by next/font in layout.tsx and exposed as --font-inter. */
+  --radius-control: 0.625rem;
+  --radius-card: 1rem;
+  --radius-code: 0.75rem;
+  --radius-composer: 1.5rem;
+
+  /* Inter and JetBrains Mono are loaded by next/font in layout.tsx. */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /* 5. Defaults that use the tokens, so most elements need no color class at all. */
@@ -112,6 +136,7 @@
   body {
     background: var(--canvas);
     color: var(--ink);
+    font-feature-settings: "cv11", "ss01"; /* Inter: single-storey a, open digits */
   }
 
   ::placeholder {
@@ -127,5 +152,76 @@
   :focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
+  }
+}
+
+/* 6. The animated logo mark (decisions A26). This is the ONLY animation in the app (the one
+   exception to rule A17). The dots drift all the time, each on its own small wandering path
+   and its own speed, like bubbles floating in water. The amber dot in the middle also
+   breathes a little.
+     "ambient"  a slow, calm drift (brand moments: login, empty chat)
+     "thinking" the same drift, faster and wider (waiting for the first word, loading)
+   Only transform changes, so nothing around the logo moves. Every dot reads its own numbers
+   from the inline style set in animated-mark.tsx:
+     --fx --fy  how far it wanders (in logo units, the logo is 60 wide)
+     --fd       seconds for one full wander
+     --fo       where in the wander it starts, so it is already moving when the page opens
+   People who prefer reduced motion get the still logo (the "Thinking..." text next to it
+   does not depend on it). */
+.mark-dot,
+.mark-center {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+[data-mark] {
+  --mark-speed: 1; /* 1 = calm; lower is faster */
+  --mark-amp: 1; /* 1 = small; higher is wider */
+}
+
+[data-mark="thinking"] {
+  --mark-speed: 0.4;
+  --mark-amp: 1.5;
+}
+
+@keyframes mark-float {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(calc(var(--fx) * var(--mark-amp) * 1px), calc(var(--fy) * var(--mark-amp) * -1px));
+  }
+  50% {
+    transform: translate(calc(var(--fx) * var(--mark-amp) * -0.7px), calc(var(--fy) * var(--mark-amp) * 0.8px));
+  }
+  75% {
+    transform: translate(calc(var(--fx) * var(--mark-amp) * 0.5px), calc(var(--fy) * var(--mark-amp) * 1px));
+  }
+}
+
+@keyframes mark-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+[data-mark] .mark-dot {
+  animation: mark-float calc(var(--fd) * var(--mark-speed) * 1s) ease-in-out infinite;
+  animation-delay: calc(var(--fo) * var(--mark-speed) * -1s);
+}
+
+[data-mark] .mark-center {
+  animation: mark-breathe calc(3.2s * var(--mark-speed)) ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-mark] .mark-dot,
+  [data-mark] .mark-center {
+    animation: none;
   }
 }
