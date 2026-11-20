@@ -328,7 +328,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         } else if (event.event === "token") {
           setState((s) => ({
             ...s,
-            messages: updateLast(s.messages, (m) => ({ ...m, text: m.text + event.data.text, notice: null })),
+            messages: updateLast(s.messages, (m) => {
+              const responseText = m.text + event.data.text;
+              const cleanText = responseText.replace(/<think>[\s\S]*?<\/think>\s*/g, "");
+              return { ...m, text: cleanText, notice: null };
+            }),
           }));
         } else if (event.event === "done") {
           finished = true;

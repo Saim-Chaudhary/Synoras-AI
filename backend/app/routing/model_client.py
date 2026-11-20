@@ -68,6 +68,7 @@ def build_model(tier: Tier, settings: Settings):
         return ChatOllama(
             model=settings.ollama_model,
             base_url=settings.ollama_base_url,
+            think=False,
             num_predict=MAX_OUTPUT_TOKENS,
             client_kwargs={"timeout": REQUEST_TIMEOUT_SECONDS},
         )
