@@ -29,6 +29,7 @@ type Props = {
   requirements?: Requirement[]; // a checklist, for example for the password rules
   error?: string; // when set, the input is marked wrong and the message appears below it
   className?: string; // spacing above the field (the default suits a form with many fields)
+  labelAction?: ReactNode; // a small link at the right end of the label row ("Forgot password?")
   icon?: ReactNode; // a small picture at the left end (mail, lock, ...): it helps to recognise the field, it is decoration
 };
 
@@ -46,6 +47,7 @@ export default function TextField({
   error,
   className = "mt-5 [@media(max-height:720px)]:mt-3.5",
   icon,
+  labelAction,
 }: Props) {
   const [shown, setShown] = useState(false); // password visible?
   const [capsLock, setCapsLock] = useState(false);
@@ -62,9 +64,12 @@ export default function TextField({
 
   return (
     <div className={className}>
-      <label htmlFor={id} className="block text-sm font-medium text-ink">
-        {label}
-      </label>
+      <div className="flex items-center justify-between gap-3">
+        <label htmlFor={id} className="block text-sm font-medium text-ink">
+          {label}
+        </label>
+        {labelAction}
+      </div>
       <div className="relative mt-1.5">
         {icon && (
           <span aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted">
@@ -89,7 +94,7 @@ export default function TextField({
           onKeyUp={checkCapsLock}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy || undefined}
-          className={`block h-12 w-full rounded-control border bg-raised text-base text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-live/40 ${
+          className={`block h-12 w-full rounded-control border bg-raised text-base text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/35 ${
             icon ? "pl-11" : "pl-3"
           } ${isPassword ? "pr-12" : "pr-3"} ${error ? "border-danger" : "border-line-strong"}`}
         />
@@ -128,7 +133,7 @@ export default function TextField({
       {requirements && !error && (
         <ul id={`${id}-rules`} className="mt-2 space-y-1 text-sm">
           {requirements.map((rule) => (
-            <li key={rule.label} className={`flex items-center gap-1.5 ${rule.met ? "text-ink" : "text-ink-muted"}`}>
+            <li key={rule.label} className={`flex items-center gap-1.5 ${rule.met ? "font-medium text-accent" : "text-ink-muted"}`}>
               {rule.met ? (
                 <CheckIcon className="size-4 shrink-0 text-accent" />
               ) : (

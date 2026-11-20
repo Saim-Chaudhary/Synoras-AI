@@ -25,7 +25,17 @@ type Props = {
   children: ReactNode;
 };
 
-const PROMISE = "An AI that remembers, and tells you what it remembered.";
+// The panel says one thing, the same thing as its picture: login = memory, register = routing.
+const COPY = {
+  memory: {
+    headline: "An AI that remembers, and tells you what it remembered.",
+    detail: "Documents become a graph. Memories fade and get checked. Conflicts wait for your choice.",
+  },
+  routing: {
+    headline: "The right model for every task.",
+    detail: "Easy work stays local and cheap. Hard work goes to the strongest model. Every choice is logged.",
+  },
+} as const;
 
 const BENEFITS = [
   { icon: MemoryIcon, text: "Memory that stays accurate" },
@@ -35,41 +45,45 @@ const BENEFITS = [
 
 export default function AuthCard({ title, subtitle, switchPrompt, switchLabel, switchHref, art, children }: Props) {
   const Scene = art === "memory" ? MemoryScene : RoutingScene;
+  const { headline, detail } = COPY[art];
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[5fr_6fr]">
+    <div className="min-h-dvh lg:grid lg:grid-cols-[6fr_5fr]">
       {/* phone and tablet: compact header */}
       <header className="flex items-center justify-between gap-4 bg-panel px-5 py-4 text-on-panel lg:hidden">
         <div className="min-w-0">
           <AnimatedLogo size={30} mode="ambient" tone="onDark" />
-          <p className="mt-3 max-w-[16rem] text-sm leading-5 text-on-panel/85">{PROMISE}</p>
+          <p className="mt-3 max-w-[16rem] text-sm leading-5 text-on-panel/90">{headline}</p>
         </div>
         <Scene compact className="h-40 w-auto shrink-0" />
       </header>
 
       {/* desktop: the brand panel */}
-      <aside className="relative hidden min-h-dvh flex-col overflow-hidden bg-panel px-12 py-10 text-on-panel lg:flex xl:px-14">
+      <aside className="relative hidden min-h-dvh overflow-hidden bg-panel px-10 py-6 text-on-panel lg:flex">
         <BackgroundBeams />
-        <Entrance className="relative">
-          <AnimatedLogo size={44} mode="ambient" tone="onDark" />
-          <h2 className="mt-7 max-w-md text-[26px] font-semibold leading-8 tracking-tight">{PROMISE}</h2>
-          <ul className="mt-6 space-y-3">
-            {BENEFITS.map(({ icon: BenefitIcon, text }) => (
-              <li key={text} className="flex items-center gap-3 text-[15px] text-on-panel/90">
-                <span className="flex size-8 items-center justify-center rounded-full border border-on-panel/25 text-panel-teal">
-                  <BenefitIcon className="size-4" />
-                </span>
-                {text}
-              </li>
-            ))}
-          </ul>
-        </Entrance>
-        <div className="relative mt-6 min-h-0 flex-1">
-          <Scene className="absolute inset-0 h-full w-full" />
+        <div className="relative mx-auto flex w-full max-w-[42rem] flex-col 2xl:max-w-[50rem]">
+          <Entrance>
+            <AnimatedLogo size={32} mode="ambient" tone="onDark" />
+            <h2 className="mt-4 text-lg font-semibold leading-6 tracking-tight">{headline}</h2>
+            {detail && <p className="mt-1 text-[13px] leading-5 text-on-panel/90">{detail}</p>}
+            <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5">
+              {BENEFITS.map(({ icon: BenefitIcon, text }) => (
+                <li key={text} className="flex items-center gap-2 text-[13px] text-on-panel/90">
+                  <span className="flex size-6 items-center justify-center rounded-full border border-on-panel/30 text-panel-teal">
+                    <BenefitIcon className="size-3.5" />
+                  </span>
+                  {text}
+                </li>
+              ))}
+            </ul>
+          </Entrance>
+          <div className="relative mt-3 min-h-0 flex-1">
+            <Scene className="absolute inset-0 h-full w-full" />
+          </div>
         </div>
       </aside>
 
-      <main className="relative flex min-h-[calc(100dvh-6.5rem)] flex-col items-center justify-center px-5 py-16 sm:px-8 lg:min-h-dvh">
+      <main className="relative flex min-h-[calc(100dvh-6.5rem)] flex-col items-center justify-center px-5 py-10 sm:px-8 lg:min-h-dvh">
         <div className="absolute right-2 top-2 sm:right-4 sm:top-4">
           <ThemeToggle />
         </div>

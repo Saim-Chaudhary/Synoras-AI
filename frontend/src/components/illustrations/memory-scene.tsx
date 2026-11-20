@@ -3,8 +3,9 @@ import { useId } from "react";
 
 // The login picture: how Synoras remembers (decisions A29). Read from top to bottom:
 //   Documents  ->  Memory (a knowledge graph)  ->  Confidence.
-// Three documents feed a graph. Old memories are fainter than fresh ones, one fact conflicts with
-// another (the AI asks you instead of overwriting it), and one old memory has dropped to 41%.
+// Three documents feed a graph. Old memories are fainter than fresh ones. The highlighted path is
+// a memory being used: it ends on a fresh node. One fresh fact conflicts with an older one (the AI
+// asks you instead of overwriting it), and one faded node is tagged 41%: how sure the AI still is.
 // Original drawing, all colors from theme tokens (it sits on the dark brand panel), decorative.
 // The staged fade-in and the moving lights are CSS (globals.css, section 7) and stop under
 // prefers-reduced-motion, so the finished picture is shown still.
@@ -21,24 +22,31 @@ const travel = (d: string, seconds: number, delay: number): CSSProperties => ({
   ["--travel-delay" as string]: `${delay}s`,
 });
 
+const W = 480;
+const H = 396;
+const CX = 300; // the coral center point of the graph
+const CY = 190;
+
 // Memory nodes: x, y, how old it is (1 = fresh, lower = older and fainter).
 const OLD_NODES = [
-  { x: 150, y: 268, o: 0.6 },
-  { x: 118, y: 232, o: 0.28 },
-  { x: 352, y: 262, o: 0.45 },
-  { x: 205, y: 338, o: 0.5 },
-  { x: 300, y: 372, o: 0.34 },
-  { x: 372, y: 318, o: 0.26 },
+  { x: 205, y: 200, o: 0.75 },
+  { x: 170, y: 150, o: 0.45 },
+  { x: 415, y: 215, o: 0.62 }, // the older side of the conflict
+  { x: 260, y: 265, o: 0.7 },
+  { x: 400, y: 305, o: 0.4 },
+  { x: 345, y: 322, o: 0.35 },
 ];
+// The faded node that carries the 41% tag.
+const FADED = { x: 250, y: 312 };
 const FRESH_NODES = [
-  { x: 192, y: 214 },
-  { x: 292, y: 222 },
-  { x: 278, y: 306 },
+  { x: 240, y: 140 }, // the retrieval path ends here
+  { x: 365, y: 135 },
+  { x: 345, y: 245 }, // the fresh side of the conflict
 ];
 
-const CARDS = [130, 206, 282];
-const RETRIEVAL = "M205 338 Q214 292 240 262 Q270 238 292 222";
-const CONFLICT = "M352 262 Q372 300 340 318";
+const CARDS = [164, 274, 384]; // left edges of the three document cards (each 52 wide)
+const RETRIEVAL = "M260 265 Q268 225 300 190 Q272 162 240 140";
+const CONFLICT = "M345 245 Q385 250 415 215";
 
 export default function MemoryScene({ compact = false, className }: Props) {
   const uid = useId().replace(/:/g, "");
@@ -48,7 +56,8 @@ export default function MemoryScene({ compact = false, className }: Props) {
 
   return (
     <svg
-      viewBox={compact ? "96 0 304 540" : "0 0 400 540"}
+      viewBox={compact ? `100 0 ${W - 100} ${H}` : `0 0 ${W} ${H}`}
+      preserveAspectRatio={compact ? "xMidYMid meet" : "xMinYMid meet"}
       role="img"
       aria-label="Documents feed a knowledge graph. Older memories fade, fresh ones glow, and a conflict is flagged instead of overwritten."
       className={className}
@@ -63,23 +72,23 @@ export default function MemoryScene({ compact = false, className }: Props) {
           <stop offset="1" stopColor="black" />
         </radialGradient>
         <mask id={mask}>
-          <rect width="400" height="540" fill={`url(#${fade})`} />
+          <rect width={W} height={H} fill={`url(#${fade})`} />
         </mask>
       </defs>
 
       {/* dot grid that fades toward the edges */}
-      <rect width="400" height="540" fill={`url(#${grid})`} opacity="0.16" mask={`url(#${mask})`} />
+      <rect width={W} height={H} fill={`url(#${grid})`} opacity="0.2" mask={`url(#${mask})`} />
 
-      {/* stage labels */}
+      {/* stage labels, each on the same row as what it names */}
       {!compact && (
-        <g className="fill-on-panel/75 text-[15.5px] font-medium">
-          <text x="4" y="50">Documents</text>
-          <text x="4" y="258">Memory</text>
-          <text x="4" y="392">Confidence</text>
+        <g className="fill-on-panel text-[15.5px] font-medium">
+          <text x="4" y="49">Documents</text>
+          <text x="4" y="195">Memory</text>
+          <text x="4" y="317">Confidence</text>
         </g>
       )}
 
-      {/* stage 0: three document cards */}
+      {/* stage 0: three document cards, spread across the width */}
       <g className="scene-stage" style={stage(0)}>
         {CARDS.map((x) => (
           <g key={x}>
@@ -92,7 +101,7 @@ export default function MemoryScene({ compact = false, className }: Props) {
       {/* stage 1: lines flow from the documents into the graph */}
       <g className="scene-stage" style={stage(1)}>
         {CARDS.map((x, i) => {
-          const d = `M${x + 26} 76 C${x + 26} 150 240 170 240 252`;
+          const d = `M${x + 26} 76 C${x + 26} 120 ${CX} 130 ${CX} ${CY - 12}`;
           return (
             <g key={x}>
               <path d={d} className="scene-flow stroke-panel-teal/70" strokeWidth="1.6" strokeLinecap="round" />
@@ -104,23 +113,24 @@ export default function MemoryScene({ compact = false, className }: Props) {
 
       {/* stage 2: the knowledge graph */}
       <g className="scene-stage" style={stage(2)}>
-        <circle cx="240" cy="262" r="62" className="stroke-on-panel/25" strokeWidth="1" strokeDasharray="2 6" />
-        <circle cx="240" cy="262" r="118" className="stroke-on-panel/15" strokeWidth="1" strokeDasharray="2 8" />
+        <circle cx={CX} cy={CY} r="70" className="stroke-on-panel/25" strokeWidth="1" strokeDasharray="2 6" />
+        <circle cx={CX} cy={CY} r="125" className="stroke-on-panel/15" strokeWidth="1" strokeDasharray="2 8" />
 
         {/* curved edges: fainter toward older nodes */}
         <g strokeLinecap="round" strokeWidth="1.3">
-          <path d="M240 262 Q215 232 192 214" className="stroke-panel-teal/80" />
-          <path d="M240 262 Q272 244 292 222" className="stroke-panel-teal/80" />
-          <path d="M240 262 Q268 292 278 306" className="stroke-panel-teal/80" />
-          <path d="M240 262 Q192 250 150 268" className="stroke-on-panel/40" />
-          <path d="M240 262 Q216 306 205 338" className="stroke-on-panel/35" />
-          <path d="M240 262 Q310 246 352 262" className="stroke-on-panel/25" />
-          <path d="M150 268 Q128 244 118 232" className="stroke-on-panel/20" />
-          <path d="M278 306 Q290 342 300 372" className="stroke-on-panel/25" />
-          <path d="M278 306 Q330 300 372 318" className="stroke-on-panel/20" />
+          <path d={`M${CX} ${CY} Q265 160 240 140`} className="stroke-panel-teal/80" />
+          <path d={`M${CX} ${CY} Q335 150 365 135`} className="stroke-panel-teal/80" />
+          <path d={`M${CX} ${CY} Q335 215 345 245`} className="stroke-panel-teal/80" />
+          <path d={`M${CX} ${CY} Q250 175 205 200`} className="stroke-on-panel/40" />
+          <path d={`M${CX} ${CY} Q275 225 260 265`} className="stroke-on-panel/35" />
+          <path d={`M${CX} ${CY} Q365 180 415 215`} className="stroke-on-panel/25" />
+          <path d="M205 200 Q185 170 170 150" className="stroke-on-panel/20" />
+          <path d="M260 265 Q248 290 250 312" className="stroke-on-panel/30" />
+          <path d="M345 245 Q350 290 345 322" className="stroke-on-panel/25" />
+          <path d="M415 215 Q420 260 400 305" className="stroke-on-panel/20" />
         </g>
 
-        {/* the highlighted retrieval path, with a light moving along it */}
+        {/* the highlighted retrieval path (it ends on a fresh node), with a light moving along it */}
         <path d={RETRIEVAL} className="stroke-panel-teal" strokeWidth="2.6" strokeLinecap="round" />
         <circle r="4" className="scene-travel fill-on-panel" style={travel(RETRIEVAL, 3.2, 0.4)} />
 
@@ -135,35 +145,38 @@ export default function MemoryScene({ compact = false, className }: Props) {
         ))}
 
         {/* the coral center point with a ripple */}
-        <circle cx="240" cy="262" r="10" className="scene-ripple stroke-panel-live" strokeWidth="1.5" />
-        <circle cx="240" cy="262" r="10" className="fill-panel-live" />
+        <circle cx={CX} cy={CY} r="10" className="scene-ripple stroke-panel-live" strokeWidth="1.5" />
+        <circle cx={CX} cy={CY} r="10" className="fill-panel-live" />
       </g>
 
-      {/* stage 3: a conflict, and a memory that has faded to 41% */}
+      {/* stage 3: a conflict between a fresh and an older memory, and a faded node at 41% */}
       <g className="scene-stage" style={stage(3)}>
         <path d={CONFLICT} className="stroke-panel-live" strokeWidth="1.6" strokeDasharray="4 4" strokeLinecap="round" />
-        <circle cx="366" cy="290" r="10" className="fill-panel stroke-panel-live" strokeWidth="1.5" />
-        <text x="366" y="295" textAnchor="middle" className="fill-panel-live text-[14px] font-semibold">?</text>
+        <circle cx="383" cy="241" r="10" className="fill-panel stroke-panel-live" strokeWidth="1.5" />
+        <text x="383" y="246" textAnchor="middle" className="fill-panel-live text-[14px] font-semibold">?</text>
         {!compact && (
-          <text x="372" y="338" textAnchor="middle" className="fill-panel-live text-[14px]">conflict</text>
+          <text x="390" y="272" textAnchor="middle" className="fill-panel-live text-[14px]">conflict</text>
         )}
 
-        <circle cx="160" cy="392" r="12" className="stroke-on-panel/55" strokeWidth="1.2" strokeDasharray="3 3" />
-        <circle cx="160" cy="392" r="5" className="fill-on-panel" opacity="0.3" />
+        <circle cx={FADED.x} cy={FADED.y} r="12" className="stroke-on-panel/55" strokeWidth="1.2" strokeDasharray="3 3" />
+        <circle cx={FADED.x} cy={FADED.y} r="5" className="fill-on-panel" opacity="0.4" />
         {!compact && (
-          <text x="180" y="397" className="fill-on-panel/80 text-[15.5px] font-medium">41%</text>
+          <>
+            <path d={`M${FADED.x + 9} ${FADED.y + 9} L${FADED.x + 28} ${FADED.y + 22}`} className="stroke-on-panel/55" strokeWidth="1.2" strokeLinecap="round" />
+            <text x={FADED.x + 32} y={FADED.y + 28} className="fill-on-panel text-[15.5px] font-medium">41%</text>
+          </>
         )}
       </g>
 
-      {/* stage 4: legend, Fresh to Faded */}
+      {/* stage 4: legend, Fresh to Faded, centered under the graph */}
       <g className="scene-stage" style={stage(4)}>
         {[1, 0.78, 0.58, 0.4, 0.26, 0.14].map((o, i) => (
-          <circle key={i} cx={158 + i * 20} cy="500" r="4.5" className="fill-on-panel" opacity={o} />
+          <circle key={i} cx={240 + i * 20} cy="372" r="4.5" className="fill-on-panel" opacity={o} />
         ))}
         {!compact && (
-          <g className="fill-on-panel/75 text-[14.5px]">
-            <text x="146" y="505" textAnchor="end">Fresh</text>
-            <text x="270" y="505">Faded</text>
+          <g className="fill-on-panel/90 text-[14.5px]">
+            <text x="228" y="377" textAnchor="end">Fresh</text>
+            <text x="352" y="377">Faded</text>
           </g>
         )}
       </g>

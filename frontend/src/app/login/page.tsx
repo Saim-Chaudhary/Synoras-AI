@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
@@ -114,6 +115,14 @@ export default function LoginPage() {
           label="Password"
           type="password"
           icon={<LockIcon className="size-5" />}
+          labelAction={
+            <Link
+              href="/forgot-password"
+              className="inline-flex min-h-10 items-center text-sm font-medium text-accent underline underline-offset-4 hover:text-accent-hover"
+            >
+              Forgot password?
+            </Link>
+          }
           autoComplete="current-password"
           value={password}
           onChange={edit("password", setPassword)}

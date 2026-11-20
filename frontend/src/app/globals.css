@@ -12,6 +12,12 @@
    attribute that the theme script sets on <html> before the first paint. */
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
+/* The page always reserves room for a scroll bar, so the login and register pages (one scrolls,
+   one does not) have exactly the same width and the brand panel never jumps. */
+html {
+  scrollbar-gutter: stable;
+}
+
 /* 1. Brand colors, taken from the logo ("Deep teal and coral", decisions A28). Defined once, here. */
 :root {
   --brand-teal: #0f766e; /* the logo dots on a light background */
